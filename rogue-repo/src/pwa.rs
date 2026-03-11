@@ -1,4 +1,5 @@
 // Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved.
+// Contributors: GotEmCoach, KOVA, Claude Opus 4.6, SuperNinja, Composer 1.5, Google Gemini Pro 3
 //! Native Rust PWA: HTML generated in Rust, assets embedded, no client JS for app logic.
 //! Service worker (JS by spec) embedded as string, served by Rust.
 

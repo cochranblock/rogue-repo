@@ -1,4 +1,5 @@
 # Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved.
+# Contributors: GotEmCoach, KOVA, Claude Opus 4.6, SuperNinja, Composer 1.5, Google Gemini Pro 3
 #!/bin/bash
 # Build rogue-runner for Windows (cross-compile from Linux)
 # rustup target add x86_64-pc-windows-gnu

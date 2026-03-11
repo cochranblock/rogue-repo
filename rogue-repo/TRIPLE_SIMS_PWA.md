@@ -1,4 +1,5 @@
 <!-- Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved. -->
+<!-- Contributors: GotEmCoach, KOVA, Claude Opus 4.6, SuperNinja, Composer 1.5, Google Gemini Pro 3 -->
 # TRIPLE SIMS: Rogue Repo — App Store PWA (d5)
 
 **Target:** roguerepo.io — Rust-only app store, sovereign ISO 8583, Rogue Bucks economy  

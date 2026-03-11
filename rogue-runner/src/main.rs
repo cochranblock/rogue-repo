@@ -1,4 +1,5 @@
 // Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved.
+// Contributors: GotEmCoach, KOVA, Claude Opus 4.6, SuperNinja, Composer 1.5, Google Gemini Pro 3
 //! rogue-runner: f0=main. t88=GameState f105–f112 methods. c90–c95 consts.
 
 #![allow(

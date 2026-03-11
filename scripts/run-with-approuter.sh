@@ -1,4 +1,5 @@
 # Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved.
+# Contributors: GotEmCoach, KOVA, Claude Opus 4.6, SuperNinja, Composer 1.5, Google Gemini Pro 3
 #!/bin/bash
 # Start approuter, then rogue-repo. Rogue-repo registers with approuter on startup.
 # Requires: approuter at ../../approuter, DATABASE_URL optional for auth.
