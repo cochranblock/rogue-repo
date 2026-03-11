@@ -1,4 +1,4 @@
-# Unlicense — cochranblock.org
+# Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved.
 [workspace]
 resolver = "2"
 members = ["rogue-repo", "rogue-runner"]

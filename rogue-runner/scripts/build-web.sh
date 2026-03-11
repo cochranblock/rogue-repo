@@ -1,4 +1,4 @@
-# Unlicense — cochranblock.org
+# Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved.
 #!/bin/bash
 # Build rogue-runner for web (wasm32). Output: rogue-runner/web/
 set -e

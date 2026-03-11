@@ -1,4 +1,4 @@
-# Unlicense — cochranblock.org
+# Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved.
 #!/bin/bash
 # Build rogue-runner for iOS Simulator (macOS only)
 # Requires: rustup target add x86_64-apple-ios

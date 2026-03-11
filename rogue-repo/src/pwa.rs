@@ -1,4 +1,4 @@
-// Unlicense — cochranblock.org
+// Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved.
 //! Native Rust PWA: HTML generated in Rust, assets embedded, no client JS for app logic.
 //! Service worker (JS by spec) embedded as string, served by Rust.
 

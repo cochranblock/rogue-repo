@@ -1,4 +1,4 @@
-# Unlicense — cochranblock.org
+# Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved.
 #!/bin/bash
 # Build rogue-runner APK for Android (requires Docker + cargo-quad-apk)
 # docker pull notfl3/cargo-apk

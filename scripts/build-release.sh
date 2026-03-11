@@ -1,4 +1,4 @@
-# Unlicense — cochranblock.org
+# Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved.
 #!/bin/bash
 # Build rogue-runner for Windows EXE + Android APK. Copies to rogue-repo/assets/downloads/.
 # Run from WSL. Requires: Docker, rustup, mingw-w64 (sudo apt install mingw-w64)
