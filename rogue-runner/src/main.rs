@@ -1,4 +1,4 @@
-// Copyright (c) 2026 The Cochran Block. All rights reserved.
+// Unlicense — cochranblock.org
 //! rogue-runner: f0=main. t88=GameState f105–f112 methods. c90–c95 consts.
 
 #![allow(

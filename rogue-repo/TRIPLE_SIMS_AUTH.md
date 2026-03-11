@@ -1,4 +1,4 @@
-<!-- Copyright (c) 2026 The Cochran Block. All rights reserved. -->
+<!-- Unlicense — cochranblock.org -->
 # TRIPLE SIMS: Rogue Repo — Auth (d7)
 
 **Target:** roguerepo.io — f97 (register), f98 (login), f100 (verify), f101 (logout)  

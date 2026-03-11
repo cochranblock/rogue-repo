@@ -1,4 +1,4 @@
-// Copyright (c) 2026 The Cochran Block. All rights reserved.
+// Unlicense — cochranblock.org
 //! rogue-runner: 1000 levels, procedural, offline. f95=mulberry32 f96=generate_level
 
 #![allow(non_camel_case_types, non_snake_case, dead_code)]

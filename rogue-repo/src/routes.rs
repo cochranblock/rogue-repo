@@ -1,4 +1,4 @@
-// Copyright (c) 2026 The Cochran Block. All rights reserved.
+// Unlicense — cochranblock.org
 #![allow(non_camel_case_types, non_snake_case, dead_code, unused_imports)]
 //! f87=serve_buy_bucks f88=serve_provision_app f89=serve_add_device. t83=BuyBucksReq t86=AddDeviceReq.
 

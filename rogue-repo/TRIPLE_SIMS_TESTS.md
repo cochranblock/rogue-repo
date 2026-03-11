@@ -1,4 +1,4 @@
-<!-- Copyright (c) 2026 The Cochran Block. All rights reserved. -->
+<!-- Unlicense — cochranblock.org -->
 # TRIPLE SIMS: Rogue Repo — Tests & API (d6)
 
 **Target:** Rogue Repo — sovereign ISO 8583 payment engine + Rogue Bucks economy  

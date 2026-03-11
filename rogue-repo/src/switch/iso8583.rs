@@ -1,4 +1,4 @@
-// Copyright (c) 2026 The Cochran Block. All rights reserved.
+// Unlicense — cochranblock.org
 #![allow(non_camel_case_types, non_snake_case, dead_code, unused_imports)]
 //! f12 = build_0200, t2 = PurchaseRequest, t3 = Iso8583Message
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2026 The Cochran Block. All rights reserved.
+// Unlicense — cochranblock.org
 //! Native Rust PWA: HTML generated in Rust, assets embedded, no client JS for app logic.
 //! Service worker (JS by spec) embedded as string, served by Rust.
 

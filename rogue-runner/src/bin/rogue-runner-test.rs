@@ -1,4 +1,4 @@
-// Copyright (c) 2026 The Cochran Block. All rights reserved.
+// Unlicense — cochranblock.org
 //! f115=rogue_runner_test. TRIPLE SIMS via exopack::triple_sims::f61.
 
 fn main() {

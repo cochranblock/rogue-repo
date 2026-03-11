@@ -1,4 +1,4 @@
-<!-- Copyright (c) 2026 The Cochran Block. All rights reserved. -->
+<!-- Unlicense — cochranblock.org -->
 # Rogue Runner
 
 1000-level endless runner. Procedural generation, offline, cross-platform.

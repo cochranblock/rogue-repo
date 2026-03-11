@@ -1,4 +1,4 @@
-// Copyright (c) 2026 The Cochran Block. All rights reserved.
+// Unlicense — cochranblock.org
 //! rogue_repo lib. f30=run_tests.
 
 pub mod auth;

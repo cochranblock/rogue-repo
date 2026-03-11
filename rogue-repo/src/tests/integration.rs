@@ -1,4 +1,4 @@
-// Copyright (c) 2026 The Cochran Block. All rights reserved.
+// Unlicense — cochranblock.org
 #![allow(non_camel_case_types, non_snake_case, dead_code, unused_imports)]
 //! f50 = integration: real DB, real ledger f14/f15/f16
 

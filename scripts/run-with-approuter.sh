@@ -1,4 +1,4 @@
-# Copyright (c) 2026 The Cochran Block. All rights reserved.
+# Unlicense — cochranblock.org
 #!/bin/bash
 # Start approuter, then rogue-repo. Rogue-repo registers with approuter on startup.
 # Requires: approuter at ../../approuter, DATABASE_URL optional for auth.

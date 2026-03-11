@@ -1,4 +1,4 @@
-# Copyright (c) 2026 The Cochran Block. All rights reserved.
+# Unlicense — cochranblock.org
 #!/bin/bash
 # Build rogue-runner for Windows (cross-compile from Linux)
 # rustup target add x86_64-pc-windows-gnu

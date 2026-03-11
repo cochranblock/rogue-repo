@@ -1,4 +1,4 @@
-<!-- Copyright (c) 2026 The Cochran Block. All rights reserved. -->
+<!-- Unlicense — cochranblock.org -->
 # Rogue Repo
 
 Sovereign, high-security software repository and ISO 8583 payment engine. 100% Rust.

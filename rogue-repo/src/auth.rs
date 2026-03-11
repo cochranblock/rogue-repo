@@ -1,4 +1,4 @@
-// Copyright (c) 2026 The Cochran Block. All rights reserved.
+// Unlicense — cochranblock.org
 //! Auth: register, login, email verification. f97=register f98=login f99=verify_email
 
 #![allow(non_camel_case_types, non_snake_case, dead_code)]

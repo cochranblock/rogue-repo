@@ -1,4 +1,4 @@
-<!-- Copyright (c) 2026 The Cochran Block. All rights reserved. -->
+<!-- Unlicense — cochranblock.org -->
 # Rogue Repo Compression Map
 # Token-Optimized Code Representation
 # Sovereign ISO 8583 payment engine + Rogue Bucks economy
