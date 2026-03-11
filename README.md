@@ -1,5 +1,10 @@
 <!-- Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved. -->
 <!-- Contributors: GotEmCoach, KOVA, Claude Opus 4.6, SuperNinja, Composer 1.5, Google Gemini Pro 3 -->
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/cochranblock/rogue-repo/main/rogue-repo/assets/icon-192.svg" alt="Rogue Repo" width="96">
+</p>
+
 # Rogue Repo
 
 Sovereign, high-security software repository and ISO 8583 payment engine. 100% Rust.
