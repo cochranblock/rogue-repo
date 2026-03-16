@@ -10,4 +10,6 @@ mkdir -p rogue-runner/web rogue-repo/rogue-repo/assets/apps/rogue-runner-wasm
 cp target/wasm32-unknown-unknown/release/rogue-runner.wasm rogue-runner/web/
 cp rogue-runner/web/rogue-runner.wasm rogue-repo/rogue-repo/assets/apps/rogue-runner-wasm/
 cp rogue-runner/web/index.html rogue-repo/rogue-repo/assets/apps/rogue-runner-wasm/
-echo "Built rogue-runner/web/. Wasm copied to rogue-repo assets. Route: /apps/rogue-runner-wasm"
+cp -r rogue-runner/assets/zones rogue-repo/rogue-repo/assets/apps/rogue-runner-wasm/
+cp -r rogue-runner/assets/player rogue-repo/rogue-repo/assets/apps/rogue-runner-wasm/
+echo "Built rogue-runner/web/. Wasm + assets copied to rogue-repo. Route: /apps/rogue-runner-wasm"

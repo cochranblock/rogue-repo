@@ -126,6 +126,7 @@ f112 = draw
 f113 = loop (HTML rAF)
 f114 = resize
 f115 = rogue_runner_test (binary, TRIPLE SIMS via exopack f61)
+f117 = zone_for_level (lib)
 t95 = Obstacle (lib)
 t96 = LevelData (lib)
 t88 = GameState
@@ -137,12 +138,15 @@ s92 = vy
 s93 = level_data
 s94 = obstacle_idx
 s95 = saved_level
+s96 = run_frame (animation)
+s97 = is_jumping (animation)
 c90 = MAX_LEVEL (1000)
 c91 = GRAVITY
 c92 = JUMP
 c93 = PLAYER_H
 c94 = PLAYER_W
 c95 = GROUND
+Action = enum (None, Jump, Start)
 ```
 
 ---

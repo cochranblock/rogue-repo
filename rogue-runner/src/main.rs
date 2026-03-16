@@ -1,6 +1,6 @@
 // Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved.
 // Contributors: GotEmCoach, KOVA, Claude Opus 4.6, SuperNinja, Composer 1.5, Google Gemini Pro 3
-//! rogue-runner: f0=main. t88=GameState f105–f112 methods. c90–c95 consts.
+//! rogue-runner: f0=main. Frontend: input, render, assets. Backend: t88 in lib.
 
 #![allow(
     non_camel_case_types,
@@ -10,31 +10,7 @@
 )]
 
 use macroquad::prelude::*;
-use rogue_runner::{f96, t96};
-
-#[cfg(target_arch = "wasm32")]
-fn storage_get(key: &str) -> Option<String> {
-    let window = web_sys::window()?;
-    let storage = window.local_storage().ok().flatten()?;
-    storage.get_item(key).ok().flatten()
-}
-
-#[cfg(target_arch = "wasm32")]
-fn storage_set(key: &str, value: &str) {
-    if let Some(storage) = web_sys::window()
-        .and_then(|w| w.local_storage().ok())
-        .flatten()
-    {
-        let _ = storage.set_item(key, value);
-    }
-}
-
-const c90: u32 = 1000;
-const c91: f32 = 0.6;
-const c92: f32 = -12.0;
-const c93: f32 = 32.0;
-const c94: f32 = 24.0;
-const c95: f32 = 0.85;
+use rogue_runner::{f117, t88, Action};
 
 fn window_conf() -> Conf {
     Conf {
@@ -44,218 +20,271 @@ fn window_conf() -> Conf {
     }
 }
 
+fn asset_path(zone: u32, name: &str) -> String {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        format!(
+            "{}/assets/zones/{:02}/{}",
+            env!("CARGO_MANIFEST_DIR"),
+            zone.min(19),
+            name
+        )
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        format!(
+            "/assets/apps/rogue-runner-wasm/zones/{:02}/{}",
+            zone.min(19),
+            name
+        )
+    }
+}
+
+fn player_path(name: &str) -> String {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        format!("{}/assets/player/{}", env!("CARGO_MANIFEST_DIR"), name)
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        format!("/assets/apps/rogue-runner-wasm/player/{}", name)
+    }
+}
+
+struct ZoneAssets {
+    bg: Option<Texture2D>,
+    ground: Option<Texture2D>,
+    obstacles: Option<Texture2D>,
+}
+
+struct PlayerAssets {
+    run: Option<Texture2D>,
+    jump: Option<Texture2D>,
+}
+
+async fn load_zone(zone: u32) -> ZoneAssets {
+    let bg = load_texture(&asset_path(zone, "bg.png")).await.ok();
+    let ground = load_texture(&asset_path(zone, "ground.png")).await.ok();
+    let obstacles = load_texture(&asset_path(zone, "obstacles.png")).await.ok();
+    for t in [&bg, &ground, &obstacles] {
+        if let Some(ref tex) = t {
+            tex.set_filter(FilterMode::Nearest);
+        }
+    }
+    ZoneAssets { bg, ground, obstacles }
+}
+
+async fn load_player() -> PlayerAssets {
+    let run = load_texture(&player_path("run.png")).await.ok();
+    let jump = load_texture(&player_path("jump.png")).await.ok();
+    for t in [&run, &jump] {
+        if let Some(ref tex) = t {
+            tex.set_filter(FilterMode::Nearest);
+        }
+    }
+    PlayerAssets { run, jump }
+}
+
 #[macroquad::main(window_conf)]
 async fn main() {
     let mut st = t88::default();
     st.f105();
 
+    let mut zone_cache: Option<(u32, ZoneAssets)> = None;
+    let player = load_player().await;
+
     loop {
-        st.f111();
-        st.f112();
+        let action = if st.s88 == "menu" || st.s88 == "gameover" {
+            if is_key_pressed(KeyCode::Space)
+                || is_key_pressed(KeyCode::Up)
+                || is_mouse_button_pressed(MouseButton::Left)
+            {
+                Action::Start
+            } else {
+                Action::None
+            }
+        } else if is_key_pressed(KeyCode::Space)
+            || is_key_pressed(KeyCode::Up)
+            || is_mouse_button_pressed(MouseButton::Left)
+        {
+            Action::Jump
+        } else {
+            Action::None
+        };
+
+        let dt = get_frame_time();
+        let sw = screen_width();
+        let sh = screen_height();
+        st.f111(action, dt, sw, sh);
+
+        let zone_assets = if st.s88 == "play" {
+            let zone = f117(st.s89);
+            if zone_cache.as_ref().map(|(z, _)| *z != zone).unwrap_or(true) {
+                zone_cache = Some((zone, load_zone(zone).await));
+            }
+            zone_cache.as_ref().map(|(_, a)| a)
+        } else {
+            None
+        };
+
+        f112(st, zone_assets, &player);
         next_frame().await;
     }
 }
 
-struct t88 {
-    s88: String,
-    s89: u32,
-    s90: u32,
-    s91: f32,
-    s92: f32,
-    s93: Option<t96>,
-    s94: usize,
-    s95: u32,
-}
-impl Default for t88 {
-    fn default() -> Self {
-        Self {
-            s88: "menu".to_string(),
-            s89: 1,
-            s90: 0,
-            s91: 0.0,
-            s92: 0.0,
-            s93: None,
-            s94: 0,
-            s95: 1,
-        }
-    }
-}
+fn f112(
+    st: &t88,
+    zone_assets: Option<&ZoneAssets>,
+    player: &PlayerAssets,
+) {
+    use rogue_runner::{c93, c94, c95};
 
-impl t88 {
-    /// f105=load_progress
-    fn f105(&mut self) {
-        self.s95 = 1;
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Ok(l) = std::fs::read_to_string("rogue_runner_level.txt") {
-            if let Ok(n) = l.trim().parse::<u32>() {
-                self.s95 = n.min(c90);
-            }
-        }
-        #[cfg(target_arch = "wasm32")]
-        if let Some(s) = storage_get("rogue_runner_level") {
-            if let Ok(n) = s.parse::<u32>() {
-                self.s95 = n.min(c90);
-            }
-        }
-    }
-
-    /// f106=save_progress
-    fn f106(&self) {
-        #[cfg(not(target_arch = "wasm32"))]
-        let _ = std::fs::write("rogue_runner_level.txt", self.s89.to_string());
-        #[cfg(target_arch = "wasm32")]
-        storage_set("rogue_runner_level", &self.s89.to_string());
-    }
-
-    /// f107=start_game
-    fn f107(&mut self) {
-        self.s89 = self.s95;
-        self.s93 = Some(f96(self.s89));
-        self.s94 = 0;
-        self.s91 = screen_height() * c95 - c93;
-        self.s92 = 0.0;
-        self.s88 = "play".to_string();
-    }
-
-    /// f108=jump
-    fn f108(&mut self) {
-        if self.s88 != "play" {
-            return;
-        }
-        let gy = screen_height() * c95 - c93;
-        if self.s91 >= gy - 2.0 {
-            self.s92 = c92;
-        }
-    }
-
-    /// f109=game_over
-    fn f109(&mut self) {
-        self.s88 = "gameover".to_string();
-        self.f106();
-    }
-
-    /// f110=level_complete
-    fn f110(&mut self) {
-        self.s89 = (self.s89 + 1).min(c90);
-        self.s90 += self.s89;
-        self.f106();
-        self.s93 = Some(f96(self.s89));
-        self.s94 = 0;
-    }
-
-    /// f111=update
-    fn f111(&mut self) {
-        if is_key_pressed(KeyCode::Space)
-            || is_key_pressed(KeyCode::Up)
-            || is_mouse_button_pressed(MouseButton::Left)
-        {
-            if self.s88 == "menu" || self.s88 == "gameover" {
-                self.f107();
-            } else {
-                self.f108();
-            }
-        }
-
-        if self.s88 != "play" {
-            return;
-        }
-
-        let ld = self.s93.as_mut().unwrap();
-        let gy = screen_height() * c95 - c93;
-
-        self.s92 += c91;
-        self.s91 += self.s92 * (get_frame_time() * 60.0 / 16.0);
-        if self.s91 > gy {
-            self.s91 = gy;
-            self.s92 = 0.0;
-        }
-
-        let px = screen_width() * 0.2;
-        let pl = px;
-        let pr = px + c94;
-        let pt = self.s91;
-        let pb = self.s91 + c93;
-
-        let spd = ld.speed * (get_frame_time() * 60.0 / 16.0);
-        for (i, o) in ld.obstacles.iter_mut().enumerate() {
-            o.x -= spd;
-            if o.x + o.w < pl && i == self.s94 {
-                self.s94 += 1;
-                self.s90 += 10;
-            }
-            if o.x < pr && o.x + o.w > pl {
-                let ot = screen_height() * c95 - o.h;
-                let ob = screen_height() * c95;
-                if pb > ot && pt < ob {
-                    self.f109();
-                    return;
-                }
-            }
-        }
-        if self.s94 >= ld.obstacles.len() {
-            self.f110();
-        }
-    }
-
-    /// f112=draw
-    fn f112(&self) {
+    if st.s88 == "menu" || st.s88 == "gameover" {
         clear_background(BLACK);
+        let msg = if st.s88 == "gameover" {
+            format!("Game Over. Level {}. Space or Up to retry.", st.s89)
+        } else if st.s95 > 1 {
+            format!(
+                "Resume from Level {}. 1000 levels. Space, Up arrow, or click.",
+                st.s95
+            )
+        } else {
+            "1000 levels. Jump to survive. Space, Up arrow, or click.".to_string()
+        };
+        draw_text(
+            "Rogue Runner",
+            screen_width() / 2.0 - 80.0,
+            screen_height() / 2.0 - 40.0,
+            32.0,
+            SKYBLUE,
+        );
+        draw_text(
+            &msg,
+            screen_width() / 2.0 - 150.0,
+            screen_height() / 2.0,
+            20.0,
+            GRAY,
+        );
+        draw_text(
+            "Space, Up arrow, or click to Play",
+            screen_width() / 2.0 - 140.0,
+            screen_height() / 2.0 + 40.0,
+            18.0,
+            SKYBLUE,
+        );
+        return;
+    }
 
-        if self.s88 == "menu" || self.s88 == "gameover" {
-            let msg = if self.s88 == "gameover" {
-                format!("Game Over. Level {}. Space or Up to retry.", self.s89)
-            } else if self.s95 > 1 {
-                format!(
-                    "Resume from Level {}. 1000 levels. Space, Up arrow, or click.",
-                    self.s95
-                )
-            } else {
-                "1000 levels. Jump to survive. Space, Up arrow, or click.".to_string()
-            };
-            draw_text(
-                "Rogue Runner",
-                screen_width() / 2.0 - 80.0,
-                screen_height() / 2.0 - 40.0,
-                32.0,
-                SKYBLUE,
+    let gy = screen_height() * c95;
+    let sw = screen_width();
+    let sh = screen_height();
+
+    if let Some(za) = zone_assets {
+        if let Some(ref bg) = za.bg {
+            draw_texture_ex(
+                bg,
+                0.0,
+                0.0,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(Vec2::new(sw, sh)),
+                    ..Default::default()
+                },
             );
-            draw_text(
-                &msg,
-                screen_width() / 2.0 - 150.0,
-                screen_height() / 2.0,
-                20.0,
-                GRAY,
-            );
-            draw_text(
-                "Space, Up arrow, or click to Play",
-                screen_width() / 2.0 - 140.0,
-                screen_height() / 2.0 + 40.0,
-                18.0,
-                SKYBLUE,
-            );
-            return;
+        } else {
+            clear_background(BLACK);
         }
+    } else {
+        clear_background(BLACK);
+    }
 
-        let gy = screen_height() * c95;
-        draw_rectangle(0.0, gy, screen_width(), screen_height() - gy, DARKGRAY);
+    if let Some(za) = zone_assets {
+        if let Some(ref ground) = za.ground {
+            let gw = ground.width();
+            let gh = ground.height();
+            let mut x = 0.0f32;
+            while x < sw {
+                draw_texture_ex(
+                    ground,
+                    x,
+                    gy,
+                    WHITE,
+                    DrawTextureParams {
+                        dest_size: Some(Vec2::new(gw, sh - gy)),
+                        ..Default::default()
+                    },
+                );
+                x += gw;
+            }
+        } else {
+            draw_rectangle(0.0, gy, sw, sh - gy, DARKGRAY);
+        }
+    } else {
+        draw_rectangle(0.0, gy, sw, sh - gy, DARKGRAY);
+    }
 
-        let px = screen_width() * 0.2;
-        draw_rectangle(px, self.s91, c94, c93, SKYBLUE);
+    let px = sw * 0.2;
+    let run_frames = 4u32;
+    let frame_w = 24.0f32;
 
-        if let Some(ref ld) = self.s93 {
-            for o in &ld.obstacles {
-                if o.x + o.w > 0.0 {
+    if let Some(ref run) = player.run {
+        if st.s97 {
+            if let Some(ref jump) = player.jump {
+                draw_texture(jump, px, st.s91, WHITE);
+            } else {
+                draw_rectangle(px, st.s91, c94, c93, SKYBLUE);
+            }
+        } else {
+            let frame = (st.s96 / 4) % run_frames;
+            let src_x = frame as f32 * frame_w;
+            draw_texture_ex(
+                run,
+                px,
+                st.s91,
+                WHITE,
+                DrawTextureParams {
+                    source: Some(Rect::new(src_x, 0.0, frame_w, 32.0)),
+                    dest_size: Some(Vec2::new(c94, c93)),
+                    ..Default::default()
+                },
+            );
+        }
+    } else {
+        draw_rectangle(px, st.s91, c94, c93, SKYBLUE);
+    }
+
+    if let Some(ref ld) = st.s93 {
+        let obs_tex = zone_assets.and_then(|za| za.obstacles.as_ref());
+        let obs_cell = 64.0f32;
+        for (i, o) in ld.obstacles.iter().enumerate() {
+            if o.x + o.w > 0.0 {
+                if let Some(ref tex) = obs_tex {
+                    let idx = i % 4;
+                    let src_x = (idx % 4) as f32 * obs_cell;
+                    let src_y = (idx / 4) as f32 * obs_cell;
+                    draw_texture_ex(
+                        tex,
+                        o.x,
+                        gy - o.h,
+                        WHITE,
+                        DrawTextureParams {
+                            source: Some(Rect::new(src_x, src_y, obs_cell, obs_cell)),
+                            dest_size: Some(Vec2::new(o.w, o.h)),
+                            ..Default::default()
+                        },
+                    );
+                } else {
                     draw_rectangle(o.x, gy - o.h, o.w, o.h, ORANGE);
                 }
             }
         }
-
-        draw_text(
-            &format!("Level {} · {}", self.s89, self.s90),
-            12.0,
-            28.0,
-            20.0,
-            SKYBLUE,
-        );
     }
+
+    draw_text(
+        &format!("Level {} · {}", st.s89, st.s90),
+        12.0,
+        28.0,
+        20.0,
+        SKYBLUE,
+    );
 }
