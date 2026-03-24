@@ -1,6 +1,18 @@
 <!-- Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved. -->
 <!-- Contributors: GotEmCoach, KOVA, Claude Opus 4.6, SuperNinja, Composer 1.5, Google Gemini Pro 3 -->
 
+> **It's not the Mech — it's the pilot.**
+>
+> This repo is part of [CochranBlock](https://cochranblock.org) — Rust repositories powering an entire company on a **single <10MB binary**, a laptop, and a **$10/month** Cloudflare tunnel. No AWS. No Kubernetes. No six-figure DevOps team. Zero cloud.
+>
+> **[cochranblock.org](https://cochranblock.org)** is a live demo of this architecture.
+>
+> Every repo ships with **[Proof of Artifacts](PROOF_OF_ARTIFACTS.md)** (wire diagrams, screenshots, and build output proving the work is real) and a **[Timeline of Invention](TIMELINE_OF_INVENTION.md)** (dated commit-level record of what was built, when, and why — proving human-piloted AI development, not generated spaghetti).
+>
+> **Looking to cut your server bill by 90%?** → [Zero-Cloud Tech Intake Form](https://cochranblock.org/deploy)
+
+---
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/cochranblock/rogue-repo/main/rogue-repo/assets/icon-192.svg" alt="Rogue Repo" width="96">
 </p>
