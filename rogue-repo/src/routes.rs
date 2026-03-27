@@ -3,11 +3,14 @@
 #![allow(non_camel_case_types, non_snake_case, dead_code, unused_imports)]
 //! f87=serve_buy_bucks f88=serve_provision_app f89=serve_add_device. t83=BuyBucksReq t86=AddDeviceReq.
 
+use axum::http::StatusCode;
 use axum::{extract::State, response::Html, Json};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::ledger::t4;
 use crate::pwa;
+use crate::switch::{f12, t2};
 
 #[derive(Clone)]
 pub struct t0 {
@@ -63,25 +66,166 @@ pub async fn f4() -> Html<String> {
 }
 
 /// f87 = serve_buy_bucks, POST /buy-bucks
-pub async fn f87(State(_p0): State<t0>, Json(_p2): Json<t83>) -> Json<t84> {
-    Json(t84 {
-        s85: true,
-        s84: "buy-bucks: placeholder (ISO 8583 + bank integration)".into(),
-    })
+/// Flow: build ISO 8583 MTI 0200 → (bank send TBD) → credit bucks via ledger
+pub async fn f87(State(p0): State<t0>, Json(p2): Json<t83>) -> (StatusCode, Json<t84>) {
+    let pool = match &p0.s0 {
+        Some(p) => p,
+        None => {
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(t84 {
+                    s85: false,
+                    s84: "Database not configured".into(),
+                }),
+            );
+        }
+    };
+
+    // Build ISO 8583 MTI 0200 purchase request
+    let iso_req = t2 {
+        pan_encrypted: p2.pan_encrypted,
+        amount_cents: 420,
+        stan: rand::random::<u32>() % 999999,
+    };
+    let iso_msg = match f12(&iso_req) {
+        Ok(m) => m,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(t84 {
+                    s85: false,
+                    s84: format!("ISO 8583 build failed: {}", e),
+                }),
+            );
+        }
+    };
+
+    tracing::info!(
+        "ISO 8583 MTI 0200 built: {} bytes (bank send not yet wired)",
+        iso_msg.raw.len()
+    );
+
+    // Credit 420 Rogue Bucks (bank send step skipped — no TCP endpoint yet)
+    let ledger = t4::new(pool.clone());
+    match ledger.f16(p2.s87, 420).await {
+        Ok(()) => (
+            StatusCode::OK,
+            Json(t84 {
+                s85: true,
+                s84: format!(
+                    "420 Rogue Bucks credited. ISO 8583 0200 built ({} bytes). Bank send pending.",
+                    iso_msg.raw.len()
+                ),
+            }),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(t84 {
+                s85: false,
+                s84: format!("Ledger error: {}", e),
+            }),
+        ),
+    }
 }
 
 /// f88 = serve_provision_app, POST /provision-app (42 bucks)
-pub async fn f88(State(_p0): State<t0>, Json(_p2): Json<t6>) -> Json<t84> {
-    Json(t84 {
-        s85: true,
-        s84: "provision-app: placeholder".into(),
-    })
+pub async fn f88(State(p0): State<t0>, Json(p2): Json<t6>) -> (StatusCode, Json<t84>) {
+    let pool = match &p0.s0 {
+        Some(p) => p,
+        None => {
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(t84 {
+                    s85: false,
+                    s84: "Database not configured".into(),
+                }),
+            );
+        }
+    };
+
+    let ledger = t4::new(pool.clone());
+    match ledger.f15(p2.user_id, &p2.game_id).await {
+        Ok(()) => (
+            StatusCode::OK,
+            Json(t84 {
+                s85: true,
+                s84: format!("Provisioned '{}'. 42 Rogue Bucks deducted.", p2.game_id),
+            }),
+        ),
+        Err(e) => {
+            let (status, msg) = match &e {
+                crate::ledger::E5::Insufficient(bal) => (
+                    StatusCode::PAYMENT_REQUIRED,
+                    format!("Insufficient Rogue Bucks: {} (need 42)", bal),
+                ),
+                crate::ledger::E5::NotFound(_) => {
+                    (StatusCode::NOT_FOUND, format!("User not found"))
+                }
+                _ => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Ledger error: {}", e),
+                ),
+            };
+            (
+                status,
+                Json(t84 {
+                    s85: false,
+                    s84: msg,
+                }),
+            )
+        }
+    }
 }
 
 /// f89 = serve_add_device, POST /add-device (420 bucks)
-pub async fn f89(State(_p0): State<t0>, Json(_p2): Json<t86>) -> Json<t84> {
-    Json(t84 {
-        s85: true,
-        s84: "add-device: placeholder".into(),
-    })
+pub async fn f89(State(p0): State<t0>, Json(p2): Json<t86>) -> (StatusCode, Json<t84>) {
+    let pool = match &p0.s0 {
+        Some(p) => p,
+        None => {
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(t84 {
+                    s85: false,
+                    s84: "Database not configured".into(),
+                }),
+            );
+        }
+    };
+
+    let ledger = t4::new(pool.clone());
+    match ledger.f14(p2.s87, &p2.s88).await {
+        Ok(()) => (
+            StatusCode::OK,
+            Json(t84 {
+                s85: true,
+                s84: "Device registered. 420 Rogue Bucks deducted.".into(),
+            }),
+        ),
+        Err(e) => {
+            let (status, msg) = match &e {
+                crate::ledger::E5::Insufficient(bal) => (
+                    StatusCode::PAYMENT_REQUIRED,
+                    format!("Insufficient Rogue Bucks: {} (need 420)", bal),
+                ),
+                crate::ledger::E5::DeviceExists => (
+                    StatusCode::CONFLICT,
+                    "Device already registered".into(),
+                ),
+                crate::ledger::E5::NotFound(_) => {
+                    (StatusCode::NOT_FOUND, "User not found".into())
+                }
+                _ => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Ledger error: {}", e),
+                ),
+            };
+            (
+                status,
+                Json(t84 {
+                    s85: false,
+                    s84: msg,
+                }),
+            )
+        }
+    }
 }

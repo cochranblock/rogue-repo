@@ -66,9 +66,9 @@ pub async fn f51() -> Vec<t24> {
     out.push(get_not_found_404(&client, &base).await);
     out.push(get_health_json_ok(&client, &base).await);
     out.push(get_asset_404(&client, &base).await);
-    out.push(post_buy_bucks_200(&client, &base).await);
-    out.push(post_provision_app_200(&client, &base).await);
-    out.push(post_add_device_200(&client, &base).await);
+    out.push(post_buy_bucks_503_no_db(&client, &base).await);
+    out.push(post_provision_app_503_no_db(&client, &base).await);
+    out.push(post_add_device_503_no_db(&client, &base).await);
     out.push(post_invalid_json_returns_422(&client, &base).await);
     out.push(post_buy_bucks_missing_user_id_422(&client, &base).await);
 
@@ -124,7 +124,7 @@ async fn get_health_200(client: &reqwest::Client, base: &str) -> t24 {
     }
 }
 
-async fn post_buy_bucks_200(client: &reqwest::Client, base: &str) -> t24 {
+async fn post_buy_bucks_503_no_db(client: &reqwest::Client, base: &str) -> t24 {
     let start = Instant::now();
     let body = serde_json::json!({
         "user_id": "00000000-0000-0000-0000-000000000001",
@@ -137,25 +137,25 @@ async fn post_buy_bucks_200(client: &reqwest::Client, base: &str) -> t24 {
         .await;
     let ok = match r {
         Ok(res) => {
-            let status = res.status() == 200;
+            let status = res.status().as_u16() == 503;
             let text = res.text().await.unwrap_or_default();
-            status && (text.contains("\"ok\":true") || text.contains("\"ok\": true"))
+            status && text.contains("Database not configured")
         }
         Err(_) => false,
     };
     t24 {
-        name: "post_buy_bucks_200".into(),
+        name: "post_buy_bucks_503_no_db".into(),
         passed: ok,
         duration_ms: start.elapsed().as_millis() as u64,
         message: if ok {
             None
         } else {
-            Some("POST /buy-bucks 200 + ok:true".into())
+            Some("POST /buy-bucks without DB must return 503".into())
         },
     }
 }
 
-async fn post_provision_app_200(client: &reqwest::Client, base: &str) -> t24 {
+async fn post_provision_app_503_no_db(client: &reqwest::Client, base: &str) -> t24 {
     let start = Instant::now();
     let body = serde_json::json!({
         "user_id": "00000000-0000-0000-0000-000000000001",
@@ -168,25 +168,25 @@ async fn post_provision_app_200(client: &reqwest::Client, base: &str) -> t24 {
         .await;
     let ok = match r {
         Ok(res) => {
-            let status = res.status() == 200;
+            let status = res.status().as_u16() == 503;
             let text = res.text().await.unwrap_or_default();
-            status && (text.contains("\"ok\":true") || text.contains("\"ok\": true"))
+            status && text.contains("Database not configured")
         }
         Err(_) => false,
     };
     t24 {
-        name: "post_provision_app_200".into(),
+        name: "post_provision_app_503_no_db".into(),
         passed: ok,
         duration_ms: start.elapsed().as_millis() as u64,
         message: if ok {
             None
         } else {
-            Some("POST /provision-app 200 + ok:true".into())
+            Some("POST /provision-app without DB must return 503".into())
         },
     }
 }
 
-async fn post_add_device_200(client: &reqwest::Client, base: &str) -> t24 {
+async fn post_add_device_503_no_db(client: &reqwest::Client, base: &str) -> t24 {
     let start = Instant::now();
     let body = serde_json::json!({
         "user_id": "00000000-0000-0000-0000-000000000001",
@@ -199,20 +199,20 @@ async fn post_add_device_200(client: &reqwest::Client, base: &str) -> t24 {
         .await;
     let ok = match r {
         Ok(res) => {
-            let status = res.status() == 200;
+            let status = res.status().as_u16() == 503;
             let text = res.text().await.unwrap_or_default();
-            status && (text.contains("\"ok\":true") || text.contains("\"ok\": true"))
+            status && text.contains("Database not configured")
         }
         Err(_) => false,
     };
     t24 {
-        name: "post_add_device_200".into(),
+        name: "post_add_device_503_no_db".into(),
         passed: ok,
         duration_ms: start.elapsed().as_millis() as u64,
         message: if ok {
             None
         } else {
-            Some("POST /add-device 200 + ok:true".into())
+            Some("POST /add-device without DB must return 503".into())
         },
     }
 }

@@ -16,10 +16,9 @@ use axum::{
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use base64::Engine;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::routes::{t0, t84};
+use crate::routes::t0;
 
 pub const SESSION_COOKIE: &str = "rr_session";
 const SESSION_MAX_AGE: i64 = 86400 * 7; // 7 days
