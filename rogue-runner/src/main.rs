@@ -66,10 +66,8 @@ async fn load_zone(zone: u32) -> ZoneAssets {
     let bg = load_texture(&asset_path(zone, "bg.png")).await.ok();
     let ground = load_texture(&asset_path(zone, "ground.png")).await.ok();
     let obstacles = load_texture(&asset_path(zone, "obstacles.png")).await.ok();
-    for t in [&bg, &ground, &obstacles] {
-        if let Some(ref tex) = t {
-            tex.set_filter(FilterMode::Nearest);
-        }
+    for tex in [&bg, &ground, &obstacles].into_iter().flatten() {
+        tex.set_filter(FilterMode::Nearest);
     }
     ZoneAssets { bg, ground, obstacles }
 }
@@ -77,10 +75,8 @@ async fn load_zone(zone: u32) -> ZoneAssets {
 async fn load_player() -> PlayerAssets {
     let run = load_texture(&player_path("run.png")).await.ok();
     let jump = load_texture(&player_path("jump.png")).await.ok();
-    for t in [&run, &jump] {
-        if let Some(ref tex) = t {
-            tex.set_filter(FilterMode::Nearest);
-        }
+    for tex in [&run, &jump].into_iter().flatten() {
+        tex.set_filter(FilterMode::Nearest);
     }
     PlayerAssets { run, jump }
 }
@@ -127,7 +123,7 @@ async fn main() {
             None
         };
 
-        f112(st, zone_assets, &player);
+        f112(&st, zone_assets, &player);
         next_frame().await;
     }
 }
@@ -201,7 +197,7 @@ fn f112(
     if let Some(za) = zone_assets {
         if let Some(ref ground) = za.ground {
             let gw = ground.width();
-            let gh = ground.height();
+            let _gh = ground.height();
             let mut x = 0.0f32;
             while x < sw {
                 draw_texture_ex(
@@ -258,7 +254,7 @@ fn f112(
         let obs_cell = 64.0f32;
         for (i, o) in ld.obstacles.iter().enumerate() {
             if o.x + o.w > 0.0 {
-                if let Some(ref tex) = obs_tex {
+                if let Some(tex) = obs_tex {
                     let idx = i % 4;
                     let src_x = (idx % 4) as f32 * obs_cell;
                     let src_y = (idx / 4) as f32 * obs_cell;

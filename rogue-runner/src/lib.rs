@@ -2,7 +2,7 @@
 // Contributors: GotEmCoach, KOVA, Claude Opus 4.6, SuperNinja, Composer 1.5, Google Gemini Pro 3
 //! rogue-runner: 1000 levels, procedural, offline. f95=mulberry32 f96=generate_level f117=zone_for_level
 
-#![allow(non_camel_case_types, non_snake_case, dead_code)]
+#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals, dead_code)]
 
 pub const c90: u32 = 1000;
 pub const c91: f32 = 0.6;

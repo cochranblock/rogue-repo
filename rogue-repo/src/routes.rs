@@ -159,7 +159,7 @@ pub async fn f88(State(p0): State<t0>, Json(p2): Json<t6>) -> (StatusCode, Json<
                     format!("Insufficient Rogue Bucks: {} (need 42)", bal),
                 ),
                 crate::ledger::E5::NotFound(_) => {
-                    (StatusCode::NOT_FOUND, format!("User not found"))
+                    (StatusCode::NOT_FOUND, "User not found".to_string())
                 }
                 _ => (
                     StatusCode::INTERNAL_SERVER_ERROR,

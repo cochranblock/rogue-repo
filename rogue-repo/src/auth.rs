@@ -97,9 +97,7 @@ pub fn session_user_id(cookie_val: Option<&str>) -> Option<Uuid> {
 fn verify_session(cookie_val: &str, secret: &[u8]) -> Option<Uuid> {
     use hmac::{Hmac, Mac};
     use sha2::Sha256;
-    let mut parts = cookie_val.splitn(2, '.');
-    let payload = parts.next()?;
-    let sig_b64 = parts.next()?;
+    let (payload, sig_b64) = cookie_val.split_once('.')?;
     let sig = base64::engine::general_purpose::URL_SAFE_NO_PAD
         .decode(sig_b64)
         .ok()?;
