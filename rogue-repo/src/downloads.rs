@@ -10,8 +10,8 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 
-use crate::auth::{session_user_id, SESSION_COOKIE};
-use crate::pwa::Assets;
+use crate::auth::{c10, f20};
+use crate::pwa::t33;
 
 #[derive(serde::Deserialize)]
 pub struct t118 {
@@ -20,8 +20,8 @@ pub struct t118 {
 
 /// f118 = serve_rogue_runner_download. GET /downloads/rogue-runner?platform=windows|android
 pub async fn f118(jar: CookieJar, Query(q): Query<t118>) -> Response {
-    let cookie_val = jar.get(SESSION_COOKIE).map(|c| c.value());
-    let _user_id = match session_user_id(cookie_val) {
+    let cookie_val = jar.get(c10).map(|c| c.value());
+    let _user_id = match f20(cookie_val) {
         Some(u) => u,
         None => return Redirect::to("/login?next=/downloads/rogue-runner").into_response(),
     };
@@ -45,7 +45,7 @@ pub async fn f118(jar: CookieJar, Query(q): Query<t118>) -> Response {
         }
     };
 
-    let body = match Assets::get(path) {
+    let body = match t33::get(path) {
         Some(f) => f.data.into_owned(),
         None => {
             return (StatusCode::NOT_FOUND, format!("Binary not found: {}", path)).into_response()

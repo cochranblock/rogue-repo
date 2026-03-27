@@ -80,11 +80,12 @@ pub struct t32 {
     pub amount_cents: u64,
     pub original_stan: u32,
     pub reversal_stan: u32,
-    pub reason: ReversalReason,
+    pub reason: t34,
 }
 
+/// t34 = ReversalReason
 #[derive(Debug, Clone, Copy)]
-pub enum ReversalReason {
+pub enum t34 {
     Timeout,
     CustomerCancel,
     SystemError,
@@ -298,9 +299,9 @@ pub fn f19(req: &t32) -> Result<t3, E4> {
     let amount_str = format!("{:012}", req.amount_cents);
 
     let reason_code = match req.reason {
-        ReversalReason::Timeout => b"4021",
-        ReversalReason::CustomerCancel => b"4000",
-        ReversalReason::SystemError => b"4005",
+        t34::Timeout => b"4021",
+        t34::CustomerCancel => b"4000",
+        t34::SystemError => b"4005",
     };
 
     // Bitmap fields: 2,3,4,11,12,13,37,49,56 (0-indexed: 1,2,3,10,11,12,36,48,55)

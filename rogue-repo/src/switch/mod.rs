@@ -8,4 +8,4 @@ mod error;
 mod iso8583;
 
 pub use error::E4;
-pub use iso8583::{f12, f17, f18, f19, t2, t3, t30, t31, t32, ReversalReason};
+pub use iso8583::{f12, f17, f18, f19, t2, t3, t30, t31, t32, t34};

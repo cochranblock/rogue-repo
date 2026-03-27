@@ -5,7 +5,7 @@
 
 use std::time::Instant;
 
-use crate::switch::{f12, f17, f18, f19, t2, t30, t32, ReversalReason};
+use crate::switch::{f12, f17, f18, f19, t2, t30, t32, t34};
 use crate::vault::{f10, f11, t1};
 
 use crate::tests::t24;
@@ -551,7 +551,7 @@ fn switch_build_0400() -> t24 {
         amount_cents: 420,
         original_stan: 12345,
         reversal_stan: 12346,
-        reason: ReversalReason::Timeout,
+        reason: t34::Timeout,
     };
     let msg = match f19(&req) {
         Ok(m) => m,
@@ -588,7 +588,7 @@ fn switch_0400_has_original_stan() -> t24 {
         amount_cents: 420,
         original_stan: 54321,
         reversal_stan: 54322,
-        reason: ReversalReason::CustomerCancel,
+        reason: t34::CustomerCancel,
     };
     let msg = f19(&req).unwrap();
     let raw_str = String::from_utf8_lossy(&msg.raw);
@@ -613,19 +613,19 @@ fn switch_0400_reason_codes() -> t24 {
         amount_cents: 420,
         original_stan: 1,
         reversal_stan: 2,
-        reason: ReversalReason::Timeout,
+        reason: t34::Timeout,
     };
 
     let msg_timeout = f19(&base).unwrap();
     let has_timeout = msg_timeout.raw.windows(4).any(|w| w == b"4021");
 
     let mut cancel = base.clone();
-    cancel.reason = ReversalReason::CustomerCancel;
+    cancel.reason = t34::CustomerCancel;
     let msg_cancel = f19(&cancel).unwrap();
     let has_cancel = msg_cancel.raw.windows(4).any(|w| w == b"4000");
 
     let mut syserr = base.clone();
-    syserr.reason = ReversalReason::SystemError;
+    syserr.reason = t34::SystemError;
     let msg_syserr = f19(&syserr).unwrap();
     let has_syserr = msg_syserr.raw.windows(4).any(|w| w == b"4005");
 
@@ -649,7 +649,7 @@ fn switch_0400_invalid_amount() -> t24 {
         amount_cents: 0,
         original_stan: 1,
         reversal_stan: 2,
-        reason: ReversalReason::Timeout,
+        reason: t34::Timeout,
     };
     let ok = f19(&req).is_err();
     t24 {

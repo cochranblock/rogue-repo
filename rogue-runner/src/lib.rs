@@ -11,9 +11,9 @@ pub const c93: f32 = 32.0;
 pub const c94: f32 = 24.0;
 pub const c95: f32 = 0.85;
 
-/// Action = abstract input (frontend maps keys/touch to this)
+/// t35 = Action — abstract input (frontend maps keys/touch to this)
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Action {
+pub enum t35 {
     None,
     Jump,
     Start,
@@ -179,13 +179,13 @@ impl t88 {
         self.s94 = 0;
     }
 
-    /// f111 = update — pure logic, no I/O. Accepts Action and dt.
-    pub fn f111(&mut self, action: Action, dt: f32, screen_w: f32, screen_h: f32) {
-        if action == Action::Start && (self.s88 == "menu" || self.s88 == "gameover") {
+    /// f111 = update — pure logic, no I/O. Accepts t35 and dt.
+    pub fn f111(&mut self, action: t35, dt: f32, screen_w: f32, screen_h: f32) {
+        if action == t35::Start && (self.s88 == "menu" || self.s88 == "gameover") {
             self.f107(screen_h);
             return;
         }
-        if action == Action::Jump {
+        if action == t35::Jump {
             self.f108(screen_h);
         }
 

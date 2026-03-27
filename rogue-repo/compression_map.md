@@ -16,12 +16,16 @@ f4   = serve_index (GET /)
 f5   = health (GET /health)
 f10  = encrypt_pan (vault)
 f11  = decrypt_pan (vault)
-f12  = build_0200 (ISO 8583 MTI 0200 pack)
+f12  = build_0200 (ISO 8583 MTI 0200 purchase request)
 f14  = add_device_ledger (deduct 420, insert fingerprint)
 f15  = provision_entitlement (42 bucks, insert entitlement)
 f16  = credit_bucks (420 for entry buy-in)
+f17  = build_0100 (ISO 8583 MTI 0100 authorization request)
+f18  = parse_0210 (ISO 8583 MTI 0210 purchase response)
+f19  = build_0400 (ISO 8583 MTI 0400 reversal)
+f20  = session_user_id (extract user UUID from signed session cookie)
 f30  = run_tests (test orchestrator)
-f31  = rogue_repo_test (binary, TRIPLE SIMS via exopack f60)
+f31  = rogue_repo_test (binary, TRIPLE SIMS via exopack f61)
 f87  = serve_buy_bucks (POST /buy-bucks)
 f88  = serve_provision_app (POST /provision-app)
 f89  = serve_add_device (POST /add-device)
@@ -46,14 +50,20 @@ f118 = serve_rogue_runner_download (GET /downloads/rogue-runner)
 ```
 t0   = AppState (s0=db_pool)
 t1   = Vault (AES-256-GCM)
-t2   = PurchaseRequest (ISO 8583: pan_encrypted, amount_cents, stan)
-t3   = Iso8583Message (raw bytes)
-t4   = Ledger (repo-ledger, wraps PgPool)
-t24  = TestResult (name, passed, duration_ms, message)
-t83  = BuyBucksReq (s87=user_id, pan_encrypted)
-t84  = BuyBucksRes / generic ok response (s85=ok, s84=message)
-t86  = AddDeviceReq (s87=user_id, s88=hardware_fingerprint)
+t2   = PurchaseRequest (ISO 8583 MTI 0200)
+t3   = Iso8583Message (raw wire bytes)
+t4   = Ledger (wraps PgPool)
 t6   = ProvisionAppReq (user_id, game_id)
+t14  = ErrorResponse (error string)
+t24  = TestResult (name, passed, duration_ms, message)
+t30  = AuthRequest (ISO 8583 MTI 0100)
+t31  = PurchaseResponse (parsed MTI 0210)
+t32  = ReversalRequest (ISO 8583 MTI 0400)
+t33  = Assets (embedded static files via rust-embed)
+t34  = ReversalReason (Timeout, CustomerCancel, SystemError)
+t83  = BuyBucksReq (s87=user_id, pan_encrypted)
+t84  = BuyBucksRes (s85=ok, s84=message)
+t86  = AddDeviceReq (s87=user_id, s88=hardware_fingerprint)
 t97  = RegisterForm (email, password)
 t98  = LoginForm (email, password)
 t99  = AuthRes (ok, message, user_id)
@@ -64,15 +74,10 @@ t118 = DownloadQuery (platform)
 
 ```
 p0 = state (AppState)
-p1 = req (Request)
 p2 = body / payload
-p3 = vault (Vault)
-p4 = pan (encrypted bytes)
-p5 = amount_cents
 p6 = user_id
 p7 = hardware_fingerprint
 p8 = game_id
-p9 = pool (PgPool)
 ```
 
 ### Struct Fields (s)
@@ -96,11 +101,7 @@ E5 = LedgerError (Insufficient, DeviceExists, Db, NotFound)
 ### Constants (c)
 
 ```
-c0 = ENTRY_BUY_IN_CENTS (420 = $4.20)
-c1 = ENTRY_BUY_IN_BUCKS (420)
-c2 = ASSET_COST_BUCKS (42)
-c3 = ADD_DEVICE_FEE_BUCKS (420)
-c4 = BUCKS_PER_USD (100)
+c10 = SESSION_COOKIE ("rr_session")
 ```
 
 ### Rogue Runner (rogue-runner binary + lib)
@@ -116,13 +117,12 @@ f109 = game_over
 f110 = level_complete
 f111 = update
 f112 = draw
-f113 = loop (HTML rAF)
-f114 = resize
 f115 = rogue_runner_test (binary, TRIPLE SIMS via exopack f61)
 f117 = zone_for_level (lib)
-t95  = Obstacle (lib)
-t96  = LevelData (lib)
+t35  = Action (None, Jump, Start)
 t88  = GameState
+t95  = Obstacle (x, h, w)
+t96  = LevelData (speed, obstacles)
 s88  = state (GameState)
 s89  = level
 s90  = score
@@ -139,21 +139,6 @@ c92  = JUMP
 c93  = PLAYER_H
 c94  = PLAYER_W
 c95  = GROUND
-Action = enum (None, Jump, Start)
-```
-
----
-
-## Docs (d)
-
-```
-d1  = Sim1 (User Story Analysis)
-d2  = Sim2 (Feature Gap Analysis)
-d3  = Sim3 (UI/UX Analysis)
-d4  = Implementation Summary
-d5  = TRIPLE_SIMS_PWA.md (PWA, app store)
-d6  = TRIPLE_SIMS_TESTS.md (tests, API)
-d7  = TRIPLE_SIMS_AUTH.md (f97-f103)
 ```
 
 ---

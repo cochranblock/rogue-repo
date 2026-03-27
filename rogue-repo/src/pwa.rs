@@ -1,5 +1,6 @@
 // Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved.
 // Contributors: GotEmCoach, KOVA, Claude Opus 4.6, SuperNinja, Composer 1.5, Google Gemini Pro 3
+#![allow(non_camel_case_types, non_snake_case, dead_code)]
 //! Native Rust PWA: HTML generated in Rust, assets embedded, no client JS for app logic.
 //! Service worker (JS by spec) embedded as string, served by Rust.
 
@@ -12,7 +13,8 @@ use rust_embed::RustEmbed;
 
 #[derive(RustEmbed)]
 #[folder = "assets/"]
-pub struct Assets;
+/// t33 = Assets (embedded static files via rust-embed)
+pub struct t33;
 
 /// f90 = pwa_html — app store PWA. Zero client JS for app logic.
 pub fn f90() -> String {
@@ -171,7 +173,7 @@ pub fn f90() -> String {
 
 /// f92 = serve_manifest, GET /manifest.json
 pub async fn f92() -> Response {
-    let body = Assets::get("manifest.json")
+    let body = t33::get("manifest.json")
         .map(|f| f.data.into_owned())
         .unwrap_or_default();
     (
@@ -186,7 +188,7 @@ pub async fn f92() -> Response {
 
 /// f93 = serve_sw, GET /sw.js — service worker (JS by spec, embedded in Rust)
 pub async fn f93() -> Response {
-    let body = Assets::get("sw.js")
+    let body = t33::get("sw.js")
         .map(|f| f.data.into_owned())
         .unwrap_or_default();
     (
@@ -201,7 +203,7 @@ pub async fn f93() -> Response {
 
 /// f95 = serve_rogue_runner_wasm, GET /apps/rogue-runner-wasm (Rust/WASM build)
 pub async fn f95() -> Response {
-    let body = Assets::get("apps/rogue-runner-wasm/index.html")
+    let body = t33::get("apps/rogue-runner-wasm/index.html")
         .map(|f| f.data.into_owned())
         .unwrap_or_default();
     (
@@ -216,7 +218,7 @@ pub async fn f95() -> Response {
 
 /// f117 = serve_null_terminal, GET /apps/null-terminal
 pub async fn f117() -> Response {
-    let body = Assets::get("apps/null-terminal.html")
+    let body = t33::get("apps/null-terminal.html")
         .map(|f| f.data.into_owned())
         .unwrap_or_default();
     (
@@ -231,7 +233,7 @@ pub async fn f117() -> Response {
 
 /// f94 = serve_rogue_runner, GET /apps/rogue-runner
 pub async fn f94() -> Response {
-    let body = Assets::get("apps/rogue-runner.html")
+    let body = t33::get("apps/rogue-runner.html")
         .map(|f| f.data.into_owned())
         .unwrap_or_default();
     (
@@ -246,7 +248,7 @@ pub async fn f94() -> Response {
 
 /// f102 = serve_login, GET /login
 pub async fn f102() -> Response {
-    let body = Assets::get("login.html")
+    let body = t33::get("login.html")
         .map(|f| f.data.into_owned())
         .unwrap_or_default();
     (
@@ -261,7 +263,7 @@ pub async fn f102() -> Response {
 
 /// f103 = serve_register, GET /register
 pub async fn f103() -> Response {
-    let body = Assets::get("register.html")
+    let body = t33::get("register.html")
         .map(|f| f.data.into_owned())
         .unwrap_or_default();
     (
@@ -280,7 +282,7 @@ pub async fn f91(Path(path): Path<String>) -> Response {
     if path.is_empty() {
         return StatusCode::NOT_FOUND.into_response();
     }
-    if let Some(file) = Assets::get(&path) {
+    if let Some(file) = t33::get(&path) {
         let mime = mime_guess::from_path(&path).first_or_octet_stream();
         (
             [

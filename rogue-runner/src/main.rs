@@ -10,7 +10,7 @@
 )]
 
 use macroquad::prelude::*;
-use rogue_runner::{f117, t88, Action};
+use rogue_runner::{f117, t88, t35};
 
 fn window_conf() -> Conf {
     Conf {
@@ -95,17 +95,17 @@ async fn main() {
                 || is_key_pressed(KeyCode::Up)
                 || is_mouse_button_pressed(MouseButton::Left)
             {
-                Action::Start
+                t35::Start
             } else {
-                Action::None
+                t35::None
             }
         } else if is_key_pressed(KeyCode::Space)
             || is_key_pressed(KeyCode::Up)
             || is_mouse_button_pressed(MouseButton::Left)
         {
-            Action::Jump
+            t35::Jump
         } else {
-            Action::None
+            t35::None
         };
 
         let dt = get_frame_time();

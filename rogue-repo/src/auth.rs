@@ -2,7 +2,7 @@
 // Contributors: GotEmCoach, KOVA, Claude Opus 4.6, SuperNinja, Composer 1.5, Google Gemini Pro 3
 //! Auth: register, login, email verification. f97=register f98=login f99=verify_email
 
-#![allow(non_camel_case_types, non_snake_case, dead_code)]
+#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals, dead_code)]
 
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
@@ -20,7 +20,8 @@ use uuid::Uuid;
 
 use crate::routes::t0;
 
-pub const SESSION_COOKIE: &str = "rr_session";
+/// c10 = c10
+pub const c10: &str = "rr_session";
 const SESSION_MAX_AGE: i64 = 86400 * 7; // 7 days
 
 /// t97 = RegisterForm
@@ -87,7 +88,8 @@ fn sign_session(user_id: Uuid, secret: &[u8]) -> String {
     format!("{}.{}", payload, sig_b64)
 }
 
-pub fn session_user_id(cookie_val: Option<&str>) -> Option<Uuid> {
+/// f20 = session_user_id — extract user UUID from signed session cookie
+pub fn f20(cookie_val: Option<&str>) -> Option<Uuid> {
     let val = cookie_val?;
     let secret =
         std::env::var("SESSION_SECRET").unwrap_or_else(|_| "dev-secret-change-in-prod".into());
@@ -277,7 +279,7 @@ pub async fn f98(
         std::env::var("SESSION_SECRET").unwrap_or_else(|_| "dev-secret-change-in-prod".into());
     let session = sign_session(user_id, secret.as_bytes());
 
-    let cookie = Cookie::build((SESSION_COOKIE, session))
+    let cookie = Cookie::build((c10, session))
         .path("/")
         .http_only(true)
         .same_site(SameSite::Lax)
@@ -319,7 +321,7 @@ pub async fn f100(
 
 /// f101 = logout, POST /logout (GET also accepted for link convenience)
 pub async fn f101() -> Response {
-    let cookie = Cookie::build((SESSION_COOKIE, ""))
+    let cookie = Cookie::build((c10, ""))
         .path("/")
         .http_only(true)
         .max_age(time::Duration::seconds(0))
