@@ -14,11 +14,11 @@ flowchart TD
     PWA --> Auth[Auth: Argon2 + HMAC-SHA256 Sessions]
     PWA --> Store[App Store: Rogue Runner]
     PWA --> BuyBucks[POST /buy-bucks]
-    BuyBucks --> Switch[repo-switch: ISO 8583 MTI 0200]
+    BuyBucks --> Switch[switch: ISO 8583 MTI 0200]
     Switch --> Bank[Bank TCP]
-    Switch --> Vault[repo-vault: AES-256-GCM PAN Encryption]
+    Switch --> Vault[vault: AES-256-GCM PAN Encryption]
     PWA --> Provision[POST /provision-app]
-    Provision --> Ledger[repo-ledger: PostgreSQL]
+    Provision --> Ledger[ledger: PostgreSQL]
     PWA --> Download[GET /downloads/rogue-runner]
     Store --> HTML[Rogue Runner HTML: 1000 Levels]
     Store --> WASM[Rogue Runner WASM: Cross-Platform]
@@ -28,7 +28,7 @@ flowchart TD
 
 | Metric | Value |
 |--------|-------|
-| Workspace crates | 4 (repo-api, repo-vault, repo-switch, repo-ledger) |
+| Workspace crates | 2 (rogue-repo, rogue-runner) |
 | Payment protocol | ISO 8583 MTI 0200 with bitvec bitmask packing |
 | Encryption | AES-256-GCM (PAN vaulting, never plaintext in logs) |
 | Auth | Argon2 password hashing + HMAC-SHA256 signed cookies |
@@ -47,7 +47,7 @@ flowchart TD
 | Rogue Runner Game | Procedural 1000-level platformer. Seed-based determinism. Saves to localStorage |
 | PWA Shell | Service worker + manifest + embedded assets via rust-embed. Offline capable |
 | Auth Stack | Argon2 (memory-hard, GPU-resistant) + email verification (24h token) + session management |
-| Binary Downloads | Authenticated route streams native binaries for Linux/Windows/macOS |
+| Binary Downloads | Authenticated route streams native binaries for Windows (EXE/MSI) and Android (APK) |
 
 ## How to Verify
 

@@ -1,7 +1,7 @@
 // Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved.
 // Contributors: GotEmCoach, KOVA, Claude Opus 4.6, SuperNinja, Composer 1.5, Google Gemini Pro 3
 #![allow(non_camel_case_types, non_snake_case, dead_code, unused_imports)]
-//! rogue-repo: f0=main, f1=buy_bucks, f2=provision_app, f3=add_device
+//! rogue-repo: f0=main. See compression_map.md for full identifier map.
 
 use rogue_repo::{auth, downloads, pwa, routes, vault};
 use approuter::{f116, RegisterConfig};

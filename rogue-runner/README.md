@@ -8,15 +8,16 @@
 
 | Platform | Build | Notes |
 |----------|-------|-------|
-| **Web** | `./scripts/build-web.sh` | wasm32. Serves at `/apps/rogue-runner-wasm` |
-| **Windows** | `./scripts/build-windows.sh` | x86_64-pc-windows-gnu. Needs mingw-w64 on Linux |
-| **iOS Simulator** | `./scripts/build-ios-sim.sh` | macOS only. x86_64-apple-ios |
-| **Android** | `./scripts/build-android.sh` | Docker + cargo-quad-apk |
+| **Web** | `scripts/build-web.sh` (from repo root) | wasm32. Serves at `/apps/rogue-runner-wasm` |
+| **Windows** | `scripts/build-windows.sh` (from repo root) | x86_64-pc-windows-gnu. Needs mingw-w64 on Linux |
+| **iOS Simulator** | `scripts/build-ios-sim.sh` (from repo root) | macOS only. x86_64-apple-ios |
+| **Android** | `scripts/build-android.sh` (from repo root) | Docker + cargo-quad-apk |
 
 ## Web
 
 ```sh
-./scripts/build-web.sh
+# From repo root:
+scripts/build-web.sh
 # Wasm copied to rogue-repo assets. Run rogue-repo, open /apps/rogue-runner-wasm
 ```
 

@@ -39,7 +39,7 @@
 
 **What:** Full sovereign app store: ISO 8583 payment engine (bitvec bitmask, MTI 0200), AES-256-GCM PAN vault, PostgreSQL ledger with ACID transactions, Rogue Bucks economy, Argon2 auth, PWA shell.
 **Why:** Build an app store that doesn't depend on Apple, Google, or any payment processor. Sovereign from payment rail to binary delivery.
-**AI Role:** AI generated implementation across all 4 crates. Human architected the payment flow, security model, and economy design.
+**AI Role:** AI generated implementation across both crates (rogue-repo modules: vault, switch, ledger, auth, pwa, routes, downloads; rogue-runner). Human architected the payment flow, security model, and economy design.
 
 ---
 
