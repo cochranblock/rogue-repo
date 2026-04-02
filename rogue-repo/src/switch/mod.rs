@@ -6,6 +6,8 @@
 
 mod error;
 mod iso8583;
+pub mod stripe;
 
 pub use error::E4;
 pub use iso8583::{f12, f17, f18, f19, t2, t3, t30, t31, t32, t34};
+pub use stripe::{f120, f121, f122, f123, t36, t37, StripeOutcome};
