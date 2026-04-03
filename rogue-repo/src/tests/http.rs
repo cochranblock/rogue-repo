@@ -56,6 +56,7 @@ pub async fn f51() -> Vec<t24> {
     out.push(get_index_200(&client, &base).await);
     out.push(get_health_200(&client, &base).await);
     out.push(get_index_contains_economy(&client, &base).await);
+    out.push(get_index_shows_login_not_logout(&client, &base).await);
     out.push(get_manifest_200(&client, &base).await);
     out.push(get_manifest_valid_json(&client, &base).await);
     out.push(get_sw_200(&client, &base).await);
@@ -66,11 +67,11 @@ pub async fn f51() -> Vec<t24> {
     out.push(get_not_found_404(&client, &base).await);
     out.push(get_health_json_ok(&client, &base).await);
     out.push(get_asset_404(&client, &base).await);
-    out.push(post_buy_bucks_503_no_db(&client, &base).await);
-    out.push(post_provision_app_503_no_db(&client, &base).await);
-    out.push(post_add_device_503_no_db(&client, &base).await);
-    out.push(post_invalid_json_returns_422(&client, &base).await);
-    out.push(post_buy_bucks_missing_user_id_422(&client, &base).await);
+    out.push(post_buy_bucks_401_no_session(&client, &base).await);
+    out.push(post_provision_app_401_no_session(&client, &base).await);
+    out.push(post_add_device_401_no_session(&client, &base).await);
+    out.push(post_invalid_json_returns_4xx(&client, &base).await);
+    out.push(post_buy_bucks_no_session_401(&client, &base).await);
 
     out
 }
@@ -124,7 +125,7 @@ async fn get_health_200(client: &reqwest::Client, base: &str) -> t24 {
     }
 }
 
-async fn post_buy_bucks_503_no_db(client: &reqwest::Client, base: &str) -> t24 {
+async fn post_buy_bucks_401_no_session(client: &reqwest::Client, base: &str) -> t24 {
     let start = Instant::now();
     let body = serde_json::json!({
         "user_id": "00000000-0000-0000-0000-000000000001",
@@ -137,25 +138,25 @@ async fn post_buy_bucks_503_no_db(client: &reqwest::Client, base: &str) -> t24 {
         .await;
     let ok = match r {
         Ok(res) => {
-            let status = res.status().as_u16() == 503;
+            let status = res.status().as_u16() == 401;
             let text = res.text().await.unwrap_or_default();
-            status && text.contains("Database not configured")
+            status && text.contains("Authentication required")
         }
         Err(_) => false,
     };
     t24 {
-        name: "post_buy_bucks_503_no_db".into(),
+        name: "post_buy_bucks_401_no_session".into(),
         passed: ok,
         duration_ms: start.elapsed().as_millis() as u64,
         message: if ok {
             None
         } else {
-            Some("POST /buy-bucks without DB must return 503".into())
+            Some("POST /buy-bucks without session must return 401".into())
         },
     }
 }
 
-async fn post_provision_app_503_no_db(client: &reqwest::Client, base: &str) -> t24 {
+async fn post_provision_app_401_no_session(client: &reqwest::Client, base: &str) -> t24 {
     let start = Instant::now();
     let body = serde_json::json!({
         "user_id": "00000000-0000-0000-0000-000000000001",
@@ -168,25 +169,25 @@ async fn post_provision_app_503_no_db(client: &reqwest::Client, base: &str) -> t
         .await;
     let ok = match r {
         Ok(res) => {
-            let status = res.status().as_u16() == 503;
+            let status = res.status().as_u16() == 401;
             let text = res.text().await.unwrap_or_default();
-            status && text.contains("Database not configured")
+            status && text.contains("Authentication required")
         }
         Err(_) => false,
     };
     t24 {
-        name: "post_provision_app_503_no_db".into(),
+        name: "post_provision_app_401_no_session".into(),
         passed: ok,
         duration_ms: start.elapsed().as_millis() as u64,
         message: if ok {
             None
         } else {
-            Some("POST /provision-app without DB must return 503".into())
+            Some("POST /provision-app without session must return 401".into())
         },
     }
 }
 
-async fn post_add_device_503_no_db(client: &reqwest::Client, base: &str) -> t24 {
+async fn post_add_device_401_no_session(client: &reqwest::Client, base: &str) -> t24 {
     let start = Instant::now();
     let body = serde_json::json!({
         "user_id": "00000000-0000-0000-0000-000000000001",
@@ -199,20 +200,20 @@ async fn post_add_device_503_no_db(client: &reqwest::Client, base: &str) -> t24 
         .await;
     let ok = match r {
         Ok(res) => {
-            let status = res.status().as_u16() == 503;
+            let status = res.status().as_u16() == 401;
             let text = res.text().await.unwrap_or_default();
-            status && text.contains("Database not configured")
+            status && text.contains("Authentication required")
         }
         Err(_) => false,
     };
     t24 {
-        name: "post_add_device_503_no_db".into(),
+        name: "post_add_device_401_no_session".into(),
         passed: ok,
         duration_ms: start.elapsed().as_millis() as u64,
         message: if ok {
             None
         } else {
-            Some("POST /add-device without DB must return 503".into())
+            Some("POST /add-device without session must return 401".into())
         },
     }
 }
@@ -510,7 +511,29 @@ async fn get_index_contains_economy(client: &reqwest::Client, base: &str) -> t24
     }
 }
 
-async fn post_invalid_json_returns_422(client: &reqwest::Client, base: &str) -> t24 {
+async fn get_index_shows_login_not_logout(client: &reqwest::Client, base: &str) -> t24 {
+    let start = Instant::now();
+    let r = client.get(format!("{}/", base)).send().await;
+    let ok = match r {
+        Ok(res) => {
+            let t = res.text().await.unwrap_or_default();
+            t.contains("/login") && !t.contains("/logout")
+        }
+        Err(_) => false,
+    };
+    t24 {
+        name: "get_index_shows_login_not_logout".into(),
+        passed: ok,
+        duration_ms: start.elapsed().as_millis() as u64,
+        message: if ok {
+            None
+        } else {
+            Some("GET / without session must show Login, not Logout".into())
+        },
+    }
+}
+
+async fn post_invalid_json_returns_4xx(client: &reqwest::Client, base: &str) -> t24 {
     let start = Instant::now();
     let r = client
         .post(format!("{}/buy-bucks", base))
@@ -521,7 +544,8 @@ async fn post_invalid_json_returns_422(client: &reqwest::Client, base: &str) -> 
     let ok = match r {
         Ok(res) => {
             let s = res.status().as_u16();
-            s == 400 || s == 422
+            // 401 (no session) or 400/422 (bad json) — both are correct rejections
+            s == 400 || s == 401 || s == 422
         }
         Err(_) => false,
     };
@@ -532,12 +556,12 @@ async fn post_invalid_json_returns_422(client: &reqwest::Client, base: &str) -> 
         message: if ok {
             None
         } else {
-            Some("invalid JSON must return 400 or 422".into())
+            Some("invalid JSON must return 4xx".into())
         },
     }
 }
 
-async fn post_buy_bucks_missing_user_id_422(client: &reqwest::Client, base: &str) -> t24 {
+async fn post_buy_bucks_no_session_401(client: &reqwest::Client, base: &str) -> t24 {
     let start = Instant::now();
     let body = serde_json::json!({ "pan_encrypted": [] });
     let r = client
@@ -546,17 +570,21 @@ async fn post_buy_bucks_missing_user_id_422(client: &reqwest::Client, base: &str
         .send()
         .await;
     let ok = match r {
-        Ok(res) => res.status().as_u16() == 422,
+        Ok(res) => {
+            let s = res.status().as_u16();
+            // 401 (no session) is the expected first rejection
+            s == 401 || s == 422
+        }
         Err(_) => false,
     };
     t24 {
-        name: "post_buy_bucks_missing_user_id_422".into(),
+        name: "post_buy_bucks_no_session_or_missing_field".into(),
         passed: ok,
         duration_ms: start.elapsed().as_millis() as u64,
         message: if ok {
             None
         } else {
-            Some("missing user_id must return 422".into())
+            Some("missing session or field must return 401 or 422".into())
         },
     }
 }

@@ -17,8 +17,13 @@ use rust_embed::RustEmbed;
 pub struct t33;
 
 /// f90 = pwa_html — app store PWA. Zero client JS for app logic.
-pub fn f90() -> String {
+pub fn f90(session_user: Option<uuid::Uuid>) -> String {
     let css = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/pwa.css"));
+    let auth_nav = if session_user.is_some() {
+        r#"<a href="/logout">Logout</a>"#
+    } else {
+        r#"<a href="/login">Login</a>"#
+    };
     format!(
         r##"<!DOCTYPE html>
 <html lang="en">
@@ -41,8 +46,7 @@ pub fn f90() -> String {
       <a href="/#featured">Featured</a>
       <a href="/#security">Security</a>
       <a href="/#economy">Rogue Bucks</a>
-      <a href="/login">Login</a>
-      <a href="/logout">Logout</a>
+      {}
       <a href="/health">Health</a>
     </nav>
   </header>
@@ -70,17 +74,17 @@ pub fn f90() -> String {
           <h3>Rogue Runner</h3>
           <p class="app-meta">Endless Runner · 1000 Levels</p>
         </a>
-        <article class="app-card" style="animation-delay: 0.1s">
+        <article class="app-card app-card--coming-soon" style="animation-delay: 0.1s">
           <div class="app-icon"><img src="/assets/apps/vault-raid.webp" alt="Vault Raid" width="96" height="96"></div>
           <h3>Vault Raid</h3>
           <p class="app-meta">Heist Puzzle · <a href="https://github.com/cochranblock/pixel-forge">Coming Soon — waiting on Pixel Forge</a></p>
         </article>
-        <article class="app-card" style="animation-delay: 0.15s">
+        <article class="app-card app-card--coming-soon" style="animation-delay: 0.15s">
           <div class="app-icon"><img src="/assets/apps/ledger-quest.webp" alt="Ledger Quest" width="96" height="96"></div>
           <h3>Ledger Quest</h3>
           <p class="app-meta">RPG Economy · <a href="https://github.com/cochranblock/pixel-forge">Coming Soon — waiting on Pixel Forge</a></p>
         </article>
-        <article class="app-card" style="animation-delay: 0.2s">
+        <article class="app-card app-card--coming-soon" style="animation-delay: 0.2s">
           <div class="app-icon"><img src="/assets/apps/switch-storm.webp" alt="Switch Storm" width="96" height="96"></div>
           <h3>Switch Storm</h3>
           <p class="app-meta">Arcade Reflex · <a href="https://github.com/cochranblock/pixel-forge">Coming Soon — waiting on Pixel Forge</a></p>
@@ -90,27 +94,27 @@ pub fn f90() -> String {
           <h3>Null Terminal</h3>
           <p class="app-meta">Hacker Sim · Play</p>
         </a>
-        <article class="app-card" style="animation-delay: 0.3s">
+        <article class="app-card app-card--coming-soon" style="animation-delay: 0.3s">
           <div class="app-icon"><img src="/assets/apps/sovereign-strike.webp" alt="Sovereign Strike" width="96" height="96"></div>
           <h3>Sovereign Strike</h3>
           <p class="app-meta">Tower Defense · <a href="https://github.com/cochranblock/pixel-forge">Coming Soon — waiting on Pixel Forge</a></p>
         </article>
-        <article class="app-card" style="animation-delay: 0.35s">
+        <article class="app-card app-card--coming-soon" style="animation-delay: 0.35s">
           <div class="app-icon"><img src="/assets/apps/crypto-kart.webp" alt="Crypto Kart" width="96" height="96"></div>
           <h3>Crypto Kart</h3>
           <p class="app-meta">Arcade Racing · <a href="https://github.com/cochranblock/pixel-forge">Coming Soon — waiting on Pixel Forge</a></p>
         </article>
-        <article class="app-card" style="animation-delay: 0.4s">
+        <article class="app-card app-card--coming-soon" style="animation-delay: 0.4s">
           <div class="app-icon"><img src="/assets/apps/offline-odyssey.webp" alt="Offline Odyssey" width="96" height="96"></div>
           <h3>Offline Odyssey</h3>
           <p class="app-meta">Exploration · <a href="https://github.com/cochranblock/pixel-forge">Coming Soon — waiting on Pixel Forge</a></p>
         </article>
-        <article class="app-card" style="animation-delay: 0.45s">
+        <article class="app-card app-card--coming-soon" style="animation-delay: 0.45s">
           <div class="app-icon"><img src="/assets/apps/rust-rumble.webp" alt="Rust Rumble" width="96" height="96"></div>
           <h3>Rust Rumble</h3>
           <p class="app-meta">Arcade Brawler · <a href="https://github.com/cochranblock/pixel-forge">Coming Soon — waiting on Pixel Forge</a></p>
         </article>
-        <article class="app-card" style="animation-delay: 0.5s">
+        <article class="app-card app-card--coming-soon" style="animation-delay: 0.5s">
           <div class="app-icon"><img src="/assets/apps/buck-blitz.webp" alt="Buck Blitz" width="96" height="96"></div>
           <h3>Buck Blitz</h3>
           <p class="app-meta">Fast Arcade · <a href="https://github.com/cochranblock/pixel-forge">Coming Soon — waiting on Pixel Forge</a></p>
@@ -170,7 +174,7 @@ pub fn f90() -> String {
   </script>
 </body>
 </html>"##,
-        css
+        css, auth_nav
     )
 }
 

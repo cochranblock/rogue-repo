@@ -105,6 +105,9 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    // Fail fast if SESSION_SECRET missing in release
+    let _ = rogue_repo::auth::f125();
+
     // --- Hot reload: read old PID before binding ---
     let old_pid = read_old_pid();
 

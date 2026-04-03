@@ -10,6 +10,7 @@ use argon2::{
 };
 use axum::{
     extract::State,
+    http::HeaderMap,
     response::{IntoResponse, Redirect, Response},
     Form, Json,
 };
@@ -19,6 +20,37 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::routes::t0;
+
+/// f125 = session_secret — enforced at startup.
+/// Release: panics if SESSION_SECRET not set.
+/// Debug: generates random 32-byte key + logs warning.
+pub fn f125() -> &'static str {
+    use std::sync::OnceLock;
+    static SECRET: OnceLock<String> = OnceLock::new();
+    SECRET.get_or_init(|| {
+        match std::env::var("SESSION_SECRET") {
+            Ok(s) if s.len() >= 32 => s,
+            Ok(s) if !s.is_empty() => {
+                tracing::warn!("SESSION_SECRET is short ({} chars), recommend >= 32", s.len());
+                s
+            }
+            _ => {
+                #[cfg(not(debug_assertions))]
+                {
+                    panic!("SESSION_SECRET env var is required in release builds (>= 32 chars)");
+                }
+                #[cfg(debug_assertions)]
+                {
+                    let mut b = [0u8; 32];
+                    rand::Rng::fill(&mut rand::thread_rng(), &mut b);
+                    let key = base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, b);
+                    tracing::warn!("SESSION_SECRET not set — using random dev key (sessions won't survive restart)");
+                    key
+                }
+            }
+        }
+    })
+}
 
 /// c10 = c10
 pub const c10: &str = "rr_session";
@@ -91,9 +123,17 @@ fn sign_session(user_id: Uuid, secret: &[u8]) -> String {
 /// f20 = session_user_id — extract user UUID from signed session cookie
 pub fn f20(cookie_val: Option<&str>) -> Option<Uuid> {
     let val = cookie_val?;
-    let secret =
-        std::env::var("SESSION_SECRET").unwrap_or_else(|_| "dev-secret-change-in-prod".into());
-    verify_session(val, secret.as_bytes())
+    verify_session(val, f125().as_bytes())
+}
+
+/// f124 = extract session cookie value from headers
+pub fn f124(headers: &HeaderMap) -> Option<String> {
+    let cookies = headers.get("cookie")?.to_str().ok()?;
+    cookies
+        .split(';')
+        .map(|s| s.trim())
+        .find(|s| s.starts_with(&format!("{}=", c10)))
+        .map(|s| s[c10.len() + 1..].to_string())
 }
 
 fn verify_session(cookie_val: &str, secret: &[u8]) -> Option<Uuid> {
@@ -275,9 +315,7 @@ pub async fn f98(
         ));
     }
 
-    let secret =
-        std::env::var("SESSION_SECRET").unwrap_or_else(|_| "dev-secret-change-in-prod".into());
-    let session = sign_session(user_id, secret.as_bytes());
+    let session = sign_session(user_id, f125().as_bytes());
 
     let cookie = Cookie::build((c10, session))
         .path("/")
