@@ -73,6 +73,17 @@ pub async fn f51() -> Vec<t24> {
     out.push(post_add_device_401_no_session(&client, &base).await);
     out.push(post_invalid_json_returns_4xx(&client, &base).await);
     out.push(post_buy_bucks_no_session_401(&client, &base).await);
+    // New: expanded coverage
+    out.push(get_login_page_200(&client, &base).await);
+    out.push(get_register_page_200(&client, &base).await);
+    out.push(get_asset_path_traversal_blocked(&client, &base).await);
+    out.push(get_index_contains_pixel_forge(&client, &base).await);
+    out.push(get_index_has_coming_soon(&client, &base).await);
+    out.push(get_health_content_type_json(&client, &base).await);
+    out.push(get_sw_content_type_js(&client, &base).await);
+    out.push(get_icon_svg_content_type(&client, &base).await);
+    out.push(post_empty_body_returns_4xx(&client, &base).await);
+    out.push(get_index_has_iso_8583_reference(&client, &base).await);
 
     out
 }
@@ -620,4 +631,155 @@ async fn post_buy_bucks_no_session_401(client: &reqwest::Client, base: &str) -> 
             Some("missing session or field must return 401 or 422".into())
         },
     }
+}
+
+// ---------------------------------------------------------------------------
+// New: expanded HTTP test coverage
+// ---------------------------------------------------------------------------
+
+async fn get_login_page_200(client: &reqwest::Client, base: &str) -> t24 {
+    let start = Instant::now();
+    let r = client.get(format!("{}/login", base)).send().await;
+    let ok = match r {
+        Ok(res) => {
+            let status = res.status() == 200;
+            let ct = res.headers().get("content-type").and_then(|v| v.to_str().ok()).unwrap_or("").to_string();
+            let body = res.text().await.unwrap_or_default();
+            status && ct.contains("text/html") && (body.contains("login") || body.contains("Login") || body.contains("email"))
+        }
+        Err(_) => false,
+    };
+    t24 { name: "get_login_page_200".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("GET /login → 200 + HTML".into()) } }
+}
+
+async fn get_register_page_200(client: &reqwest::Client, base: &str) -> t24 {
+    let start = Instant::now();
+    let r = client.get(format!("{}/register", base)).send().await;
+    let ok = match r {
+        Ok(res) => {
+            let status = res.status() == 200;
+            let ct = res.headers().get("content-type").and_then(|v| v.to_str().ok()).unwrap_or("").to_string();
+            let body = res.text().await.unwrap_or_default();
+            status && ct.contains("text/html") && (body.contains("register") || body.contains("Register") || body.contains("email"))
+        }
+        Err(_) => false,
+    };
+    t24 { name: "get_register_page_200".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("GET /register → 200 + HTML".into()) } }
+}
+
+async fn get_asset_path_traversal_blocked(client: &reqwest::Client, base: &str) -> t24 {
+    let start = Instant::now();
+    let attacks = [
+        "/assets/../../Cargo.toml",
+        "/assets/../src/main.rs",
+        "/assets/..%2F..%2FCargo.toml",
+    ];
+    let mut ok = true;
+    for path in &attacks {
+        let r = client.get(format!("{}{}", base, path)).send().await;
+        match r {
+            Ok(res) => {
+                let status = res.status().as_u16();
+                if status == 200 {
+                    let body = res.text().await.unwrap_or_default();
+                    // Must not return Cargo.toml or Rust source
+                    if body.contains("[package]") || body.contains("fn main") {
+                        ok = false;
+                    }
+                }
+            }
+            Err(_) => {} // connection error is fine
+        }
+    }
+    t24 { name: "get_asset_path_traversal_blocked".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("path traversal must not leak source files".into()) } }
+}
+
+async fn get_index_contains_pixel_forge(client: &reqwest::Client, base: &str) -> t24 {
+    let start = Instant::now();
+    let r = client.get(format!("{}/", base)).send().await;
+    let ok = match r {
+        Ok(res) => {
+            let t = res.text().await.unwrap_or_default();
+            t.contains("pixel-forge") || t.contains("Pixel Forge")
+        }
+        Err(_) => false,
+    };
+    t24 { name: "get_index_contains_pixel_forge".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("index must reference Pixel Forge dependency".into()) } }
+}
+
+async fn get_index_has_coming_soon(client: &reqwest::Client, base: &str) -> t24 {
+    let start = Instant::now();
+    let r = client.get(format!("{}/", base)).send().await;
+    let ok = match r {
+        Ok(res) => res.text().await.unwrap_or_default().contains("Coming Soon"),
+        Err(_) => false,
+    };
+    t24 { name: "get_index_has_coming_soon".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("index must show Coming Soon for blocked features".into()) } }
+}
+
+async fn get_health_content_type_json(client: &reqwest::Client, base: &str) -> t24 {
+    let start = Instant::now();
+    let r = client.get(format!("{}/health", base)).send().await;
+    let ok = match r {
+        Ok(res) => {
+            let ct = res.headers().get("content-type").and_then(|v| v.to_str().ok()).unwrap_or("");
+            ct.contains("json")
+        }
+        Err(_) => false,
+    };
+    t24 { name: "get_health_content_type_json".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("/health must return JSON content-type".into()) } }
+}
+
+async fn get_sw_content_type_js(client: &reqwest::Client, base: &str) -> t24 {
+    let start = Instant::now();
+    let r = client.get(format!("{}/sw.js", base)).send().await;
+    let ok = match r {
+        Ok(res) => {
+            let ct = res.headers().get("content-type").and_then(|v| v.to_str().ok()).unwrap_or("");
+            ct.contains("javascript")
+        }
+        Err(_) => false,
+    };
+    t24 { name: "get_sw_content_type_js".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("/sw.js must return javascript content-type".into()) } }
+}
+
+async fn get_icon_svg_content_type(client: &reqwest::Client, base: &str) -> t24 {
+    let start = Instant::now();
+    let r = client.get(format!("{}/assets/icon-192.svg", base)).send().await;
+    let ok = match r {
+        Ok(res) => {
+            let ct = res.headers().get("content-type").and_then(|v| v.to_str().ok()).unwrap_or("");
+            ct.contains("svg") || ct.contains("xml")
+        }
+        Err(_) => false,
+    };
+    t24 { name: "get_icon_svg_content_type".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("icon-192.svg must return SVG content-type".into()) } }
+}
+
+async fn post_empty_body_returns_4xx(client: &reqwest::Client, base: &str) -> t24 {
+    let start = Instant::now();
+    let r = client
+        .post(format!("{}/buy-bucks", base))
+        .header("Content-Type", "application/json")
+        .body("")
+        .send()
+        .await;
+    let ok = match r {
+        Ok(res) => {
+            let s = res.status().as_u16();
+            s >= 400 && s < 500
+        }
+        Err(_) => false,
+    };
+    t24 { name: "post_empty_body_returns_4xx".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("empty POST body must return 4xx".into()) } }
+}
+
+async fn get_index_has_iso_8583_reference(client: &reqwest::Client, base: &str) -> t24 {
+    let start = Instant::now();
+    let r = client.get(format!("{}/", base)).send().await;
+    let ok = match r {
+        Ok(res) => res.text().await.unwrap_or_default().contains("ISO 8583"),
+        Err(_) => false,
+    };
+    t24 { name: "get_index_has_iso_8583_reference".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("index must reference ISO 8583".into()) } }
 }

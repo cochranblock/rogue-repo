@@ -6,7 +6,10 @@
 use std::time::Instant;
 
 use crate::ledger::t4;
+use crate::switch::{f12, f127, f129, t2, t39};
 use sqlx::postgres::PgPoolOptions;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpListener;
 use uuid::Uuid;
 
 use crate::tests::t24;
@@ -21,6 +24,12 @@ pub async fn f50() -> Vec<t24> {
         out.push(ledger_insufficient_rejected(&url).await);
         out.push(ledger_device_exists_rejected(&url).await);
     }
+
+    // ISO 8583 TCP mock tests — no real bank required
+    out.push(tcp_mock_send_and_receive().await);
+    out.push(tcp_mock_parse_0210_round_trip().await);
+    out.push(tcp_mock_connection_refused().await);
+    out.push(tcp_mock_invalid_response_length().await);
 
     out
 }
@@ -234,6 +243,115 @@ async fn ledger_insufficient_rejected(url: &str) -> t24 {
             Some("f14 with 10 bucks must fail".into())
         },
     }
+}
+
+// ---------------------------------------------------------------------------
+// ISO 8583 TCP mock integration tests
+// ---------------------------------------------------------------------------
+
+/// Spin up a mock TCP server that responds with a valid 0210 message.
+fn build_mock_0210(amount_cents: u64, stan: u32, approved: bool) -> Vec<u8> {
+    let rc = if approved { b"00" } else { b"05" };
+    let mut msg = Vec::new();
+    msg.extend_from_slice(b"0210");
+    msg.extend_from_slice(&[0u8; 8]); // bitmap
+    msg.extend_from_slice(rc);
+    msg.extend_from_slice(format!("{:012}", amount_cents).as_bytes());
+    msg.extend_from_slice(format!("{:06}", stan).as_bytes());
+    msg
+}
+
+async fn spawn_mock_switch(response: Vec<u8>) -> t39 {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        if let Ok((mut stream, _)) = listener.accept().await {
+            // Read length-prefixed request
+            let mut len_buf = [0u8; 2];
+            let _ = stream.read_exact(&mut len_buf).await;
+            let len = u16::from_be_bytes(len_buf) as usize;
+            let mut _req = vec![0u8; len];
+            let _ = stream.read_exact(&mut _req).await;
+            // Send length-prefixed response
+            let resp_len = response.len() as u16;
+            let _ = stream.write_all(&resp_len.to_be_bytes()).await;
+            let _ = stream.write_all(&response).await;
+        }
+    });
+    t39 { host: addr.ip().to_string(), port: addr.port(), timeout_ms: 2000 }
+}
+
+async fn tcp_mock_send_and_receive() -> t24 {
+    let start = Instant::now();
+    let mock_resp = build_mock_0210(420, 1, true);
+    let endpoint = spawn_mock_switch(mock_resp.clone()).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
+    let req = t2 { pan_encrypted: vec![1, 2, 3], amount_cents: 420, stan: 1 };
+    let msg = f12(&req).unwrap();
+    let result = f127(&endpoint, &msg).await;
+    let ok = match result {
+        Ok(raw) => raw == mock_resp,
+        Err(_) => false,
+    };
+    t24 { name: "tcp_mock_send_and_receive".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("f127 round-trip to mock switch must return exact response bytes".into()) } }
+}
+
+async fn tcp_mock_parse_0210_round_trip() -> t24 {
+    let start = Instant::now();
+    let mock_resp = build_mock_0210(1000, 42, false); // declined
+    let endpoint = spawn_mock_switch(mock_resp).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
+    let req = t2 { pan_encrypted: vec![9, 8, 7], amount_cents: 1000, stan: 42 };
+    let msg = f12(&req).unwrap();
+    let result = f129(&endpoint, &msg).await;
+    let ok = match result {
+        Ok(r) => !r.approved && r.stan == 42 && r.amount_cents == 1000,
+        Err(_) => false,
+    };
+    t24 { name: "tcp_mock_parse_0210_round_trip".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("f129 declined response: approved=false, correct stan+amount".into()) } }
+}
+
+async fn tcp_mock_connection_refused() -> t24 {
+    let start = Instant::now();
+    // Bind to get a free port, then drop the listener so it's closed
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    drop(listener);
+
+    let endpoint = t39 { host: "127.0.0.1".into(), port, timeout_ms: 500 };
+    let req = t2 { pan_encrypted: vec![1], amount_cents: 100, stan: 1 };
+    let msg = f12(&req).unwrap();
+    let result = f127(&endpoint, &msg).await;
+    let ok = result.is_err();
+    t24 { name: "tcp_mock_connection_refused".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("connection to closed port must return Err".into()) } }
+}
+
+async fn tcp_mock_invalid_response_length() -> t24 {
+    let start = Instant::now();
+    // Server sends length=0 (invalid per our check)
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        if let Ok((mut stream, _)) = listener.accept().await {
+            let mut len_buf = [0u8; 2];
+            let _ = stream.read_exact(&mut len_buf).await;
+            let len = u16::from_be_bytes(len_buf) as usize;
+            let mut _req = vec![0u8; len];
+            let _ = stream.read_exact(&mut _req).await;
+            // Send length=0 (invalid)
+            let _ = stream.write_all(&0u16.to_be_bytes()).await;
+        }
+    });
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
+    let endpoint = t39 { host: addr.ip().to_string(), port: addr.port(), timeout_ms: 2000 };
+    let req = t2 { pan_encrypted: vec![1], amount_cents: 100, stan: 1 };
+    let msg = f12(&req).unwrap();
+    let result = f127(&endpoint, &msg).await;
+    let ok = result.is_err();
+    t24 { name: "tcp_mock_invalid_response_length".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("length=0 response must return Err".into()) } }
 }
 
 async fn ledger_device_exists_rejected(url: &str) -> t24 {

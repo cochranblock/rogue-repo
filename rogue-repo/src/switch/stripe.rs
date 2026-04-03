@@ -175,12 +175,50 @@ pub fn f122(_response: &t31) -> Result<StripeOutcome, E4> {
 }
 
 /// f123 = verify_webhook: Verify Stripe webhook signature.
-/// COMING SOON — stub only.
 ///
-/// Future: reads STRIPE_SECRET_KEY from env, computes HMAC-SHA256 over payload,
-/// compares against Stripe-Signature header.
-pub fn f123(_payload: &[u8], _signature: &str) -> Result<bool, E4> {
-    Err(E4::Pack(COMING_SOON.into()))
+/// Stripe-Signature header format: `t=<timestamp>,v1=<hex_hmac>[,v1=<hex_hmac>]`
+/// Signed payload: `{timestamp}.{raw_payload}`
+/// Key: `STRIPE_WEBHOOK_SECRET` env var.
+///
+/// Returns Ok(true) if any v1 signature matches the computed HMAC-SHA256.
+/// Returns Ok(false) if signatures present but none match.
+/// Returns Err if the env var is missing or the header is malformed.
+pub fn f123(payload: &[u8], signature: &str) -> Result<bool, E4> {
+    use hmac::{Hmac, Mac};
+    use sha2::Sha256;
+
+    let secret = std::env::var("STRIPE_WEBHOOK_SECRET")
+        .map_err(|_| E4::Pack("STRIPE_WEBHOOK_SECRET not set".into()))?;
+
+    let mut timestamp: Option<String> = None;
+    let mut v1_sigs: Vec<String> = Vec::new();
+
+    for part in signature.split(',') {
+        if let Some(t) = part.strip_prefix("t=") {
+            timestamp = Some(t.to_string());
+        } else if let Some(v) = part.strip_prefix("v1=") {
+            v1_sigs.push(v.to_string());
+        }
+    }
+
+    let ts = timestamp
+        .ok_or_else(|| E4::Pack("missing timestamp in Stripe-Signature".into()))?;
+    if v1_sigs.is_empty() {
+        return Err(E4::Pack("no v1 signatures in Stripe-Signature".into()));
+    }
+
+    // signed_payload = "{timestamp}.{payload}"
+    let mut signed: Vec<u8> = ts.into_bytes();
+    signed.push(b'.');
+    signed.extend_from_slice(payload);
+
+    let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes())
+        .map_err(|e| E4::Pack(format!("HMAC init: {}", e)))?;
+    mac.update(&signed);
+    let computed = mac.finalize().into_bytes();
+    let computed_hex: String = computed.iter().map(|b| format!("{:02x}", b)).collect();
+
+    Ok(v1_sigs.iter().any(|sig| sig == &computed_hex))
 }
 
 // ---------------------------------------------------------------------------

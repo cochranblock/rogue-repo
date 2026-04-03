@@ -5,7 +5,8 @@
 
 use std::time::Instant;
 
-use crate::switch::{f12, f17, f18, f19, t2, t30, t32, t34, t36, t37};
+use crate::auth;
+use crate::switch::{f12, f17, f18, f19, t2, t3, t30, t32, t34, t36, t37, t39};
 use crate::vault::{f10, f11, t1};
 
 use crate::tests::t24;
@@ -46,6 +47,49 @@ pub fn f49() -> Vec<t24> {
         stripe_event_mti_mapping(),
         stripe_unknown_event_returns_none(),
         stripe_unknown_decline_returns_none(),
+        // Stripe stub functions return Coming Soon (f120/f121/f122 still stubs)
+        stripe_f120_returns_coming_soon(),
+        stripe_f121_returns_coming_soon(),
+        stripe_f122_returns_coming_soon(),
+        // f123: real HMAC-SHA256 webhook verification
+        stripe_f123_valid_signature(),
+        stripe_f123_invalid_signature(),
+        stripe_f123_missing_env_returns_err(),
+        stripe_f123_missing_timestamp_err(),
+        stripe_f123_missing_v1_err(),
+        stripe_f123_tampered_payload_rejected(),
+        // Auth: session signing and verification
+        auth_session_secret_returns_value(),
+        auth_sign_verify_round_trip(),
+        auth_verify_expired_session(),
+        auth_verify_tampered_session(),
+        auth_verify_malformed_session(),
+        auth_f20_none_input_returns_none(),
+        auth_f20_empty_string_returns_none(),
+        auth_f124_no_cookie_header(),
+        auth_f124_other_cookies_only(),
+        auth_f124_extracts_session_cookie(),
+        // Vault edge cases
+        vault_key_32_bytes_works(),
+        vault_decrypt_exactly_nonce_length(),
+        vault_large_plaintext(),
+        vault_encrypt_different_each_time(),
+        // ISO 8583 edge cases
+        switch_0200_stan_zero(),
+        switch_0200_max_amount(),
+        switch_0200_boundary_amount_1(),
+        switch_0200_amount_99999999(),
+        switch_0100_default_merchant(),
+        switch_0210_boundary_32_bytes(),
+        switch_0210_invalid_amount_string(),
+        switch_0400_pan_empty(),
+        switch_0400_all_reasons_build(),
+        // TCP endpoint config
+        tcp_endpoint_from_env_missing(),
+        tcp_endpoint_addr_format(),
+        // Stripe decline card_declined_maps_to_05
+        stripe_card_declined_maps_to_05(),
+        stripe_all_events_have_mti(),
     ]
 }
 
@@ -799,4 +843,410 @@ fn stripe_unknown_decline_returns_none() -> t24 {
             Some("unknown Stripe decline code must return None".into())
         },
     }
+}
+
+// ---------------------------------------------------------------------------
+// Stripe stub functions — verify Coming Soon behavior
+// ---------------------------------------------------------------------------
+
+fn stripe_f120_returns_coming_soon() -> t24 {
+    let start = Instant::now();
+    let ok = crate::switch::f120(b"{}").is_err();
+    t24 { name: "stripe_f120_returns_coming_soon".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("f120 stub must return Err".into()) } }
+}
+
+fn stripe_f121_returns_coming_soon() -> t24 {
+    let start = Instant::now();
+    let ok = crate::switch::f121(1, 100).is_err();
+    t24 { name: "stripe_f121_returns_coming_soon".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("f121 stub must return Err".into()) } }
+}
+
+fn stripe_f122_returns_coming_soon() -> t24 {
+    let start = Instant::now();
+    use crate::switch::t31;
+    let resp = t31 { mti: *b"0210", response_code: *b"00", stan: 1, amount_cents: 100, approved: true, auth_code: None };
+    let ok = crate::switch::f122(&resp).is_err();
+    t24 { name: "stripe_f122_returns_coming_soon".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("f122 stub must return Err".into()) } }
+}
+
+// ---------------------------------------------------------------------------
+// f123: Stripe HMAC-SHA256 webhook verification
+// ---------------------------------------------------------------------------
+
+fn make_stripe_sig(secret: &str, timestamp: &str, payload: &[u8]) -> String {
+    use hmac::{Hmac, Mac};
+    use sha2::Sha256;
+    let mut signed = timestamp.as_bytes().to_vec();
+    signed.push(b'.');
+    signed.extend_from_slice(payload);
+    let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).unwrap();
+    mac.update(&signed);
+    let bytes = mac.finalize().into_bytes();
+    let hex: String = bytes.iter().map(|b| format!("{:02x}", b)).collect();
+    format!("t={},v1={}", timestamp, hex)
+}
+
+fn stripe_f123_valid_signature() -> t24 {
+    let start = Instant::now();
+    // Set env var, compute real signature, verify it passes
+    std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_test_secret_key_for_tests");
+    let payload = br#"{"type":"payment_intent.created","data":{}}"#;
+    let sig = make_stripe_sig("whsec_test_secret_key_for_tests", "1492774577", payload);
+    let result = crate::switch::f123(payload, &sig);
+    let ok = result == Ok(true);
+    t24 { name: "stripe_f123_valid_signature".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some(format!("expected Ok(true), got {:?}", result)) } }
+}
+
+fn stripe_f123_invalid_signature() -> t24 {
+    let start = Instant::now();
+    std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_test_secret_key_for_tests");
+    let payload = b"real payload";
+    let sig = "t=1492774577,v1=deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+    let result = crate::switch::f123(payload, sig);
+    let ok = result == Ok(false);
+    t24 { name: "stripe_f123_invalid_signature".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some(format!("expected Ok(false), got {:?}", result)) } }
+}
+
+fn stripe_f123_missing_env_returns_err() -> t24 {
+    let start = Instant::now();
+    std::env::remove_var("STRIPE_WEBHOOK_SECRET");
+    let result = crate::switch::f123(b"payload", "t=1,v1=abc");
+    let ok = result.is_err();
+    // Restore for other tests
+    std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_test_secret_key_for_tests");
+    t24 { name: "stripe_f123_missing_env_returns_err".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("missing env must return Err".into()) } }
+}
+
+fn stripe_f123_missing_timestamp_err() -> t24 {
+    let start = Instant::now();
+    std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_test_secret_key_for_tests");
+    // Header with no t= part
+    let result = crate::switch::f123(b"payload", "v1=deadbeef");
+    let ok = result.is_err();
+    t24 { name: "stripe_f123_missing_timestamp_err".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("missing t= must return Err".into()) } }
+}
+
+fn stripe_f123_missing_v1_err() -> t24 {
+    let start = Instant::now();
+    std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_test_secret_key_for_tests");
+    // Header with t= but no v1=
+    let result = crate::switch::f123(b"payload", "t=1492774577");
+    let ok = result.is_err();
+    t24 { name: "stripe_f123_missing_v1_err".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("missing v1= must return Err".into()) } }
+}
+
+fn stripe_f123_tampered_payload_rejected() -> t24 {
+    let start = Instant::now();
+    std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_test_secret_key_for_tests");
+    let original = b"original payload";
+    let tampered = b"tampered payload";
+    let sig = make_stripe_sig("whsec_test_secret_key_for_tests", "1492774577", original);
+    // Use sig computed for original, but verify against tampered
+    let result = crate::switch::f123(tampered, &sig);
+    let ok = result == Ok(false);
+    t24 { name: "stripe_f123_tampered_payload_rejected".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("tampered payload must return Ok(false)".into()) } }
+}
+
+// ---------------------------------------------------------------------------
+// Auth: session signing, verification, cookie extraction
+// ---------------------------------------------------------------------------
+
+fn auth_session_secret_returns_value() -> t24 {
+    let start = Instant::now();
+    let secret = auth::f125();
+    let ok = !secret.is_empty();
+    t24 { name: "auth_session_secret_returns_value".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("f125 must return non-empty secret".into()) } }
+}
+
+fn auth_sign_verify_round_trip() -> t24 {
+    let start = Instant::now();
+    let uid = uuid::Uuid::new_v4();
+    // Sign a session using the internal function, then verify via f20
+    let secret = auth::f125();
+    // We test f20 by constructing a valid cookie value
+    // f20 calls verify_session internally, so we need to create a valid signed session
+    // Use the same signing logic: payload = "uuid:exp", sig = hmac-sha256
+    use hmac::{Hmac, Mac};
+    use sha2::Sha256;
+    let exp = (std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64) + 3600;
+    let payload = format!("{}:{}", uid, exp);
+    let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).unwrap();
+    mac.update(payload.as_bytes());
+    let sig = mac.finalize().into_bytes();
+    let sig_b64 = base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, sig);
+    let cookie_val = format!("{}.{}", payload, sig_b64);
+
+    let result = auth::f20(Some(&cookie_val));
+    let ok = result == Some(uid);
+    t24 { name: "auth_sign_verify_round_trip".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("signed session must verify to same user_id".into()) } }
+}
+
+fn auth_verify_expired_session() -> t24 {
+    let start = Instant::now();
+    let uid = uuid::Uuid::new_v4();
+    let secret = auth::f125();
+    use hmac::{Hmac, Mac};
+    use sha2::Sha256;
+    let exp = (std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64) - 3600; // expired 1h ago
+    let payload = format!("{}:{}", uid, exp);
+    let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).unwrap();
+    mac.update(payload.as_bytes());
+    let sig = mac.finalize().into_bytes();
+    let sig_b64 = base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, sig);
+    let cookie_val = format!("{}.{}", payload, sig_b64);
+
+    let ok = auth::f20(Some(&cookie_val)).is_none();
+    t24 { name: "auth_verify_expired_session".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("expired session must return None".into()) } }
+}
+
+fn auth_verify_tampered_session() -> t24 {
+    let start = Instant::now();
+    let uid = uuid::Uuid::new_v4();
+    let secret = auth::f125();
+    use hmac::{Hmac, Mac};
+    use sha2::Sha256;
+    let exp = (std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64) + 3600;
+    let payload = format!("{}:{}", uid, exp);
+    let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).unwrap();
+    mac.update(payload.as_bytes());
+    let sig = mac.finalize().into_bytes();
+    let sig_b64 = base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, sig);
+    // Tamper: change uuid in payload but keep original sig
+    let tampered_uid = uuid::Uuid::new_v4();
+    let tampered_payload = format!("{}:{}", tampered_uid, exp);
+    let cookie_val = format!("{}.{}", tampered_payload, sig_b64);
+
+    let ok = auth::f20(Some(&cookie_val)).is_none();
+    t24 { name: "auth_verify_tampered_session".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("tampered session must return None".into()) } }
+}
+
+fn auth_verify_malformed_session() -> t24 {
+    let start = Instant::now();
+    let cases = [
+        "",
+        "not-a-session",
+        "no-dot-separator",
+        "a.b.c.too-many-dots",
+        "invalid-uuid:12345.AAAA",
+    ];
+    let ok = cases.iter().all(|c| auth::f20(Some(c)).is_none());
+    t24 { name: "auth_verify_malformed_session".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("malformed sessions must all return None".into()) } }
+}
+
+fn auth_f20_none_input_returns_none() -> t24 {
+    let start = Instant::now();
+    let ok = auth::f20(None).is_none();
+    t24 { name: "auth_f20_none_input_returns_none".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("f20(None) must return None".into()) } }
+}
+
+fn auth_f20_empty_string_returns_none() -> t24 {
+    let start = Instant::now();
+    let ok = auth::f20(Some("")).is_none();
+    t24 { name: "auth_f20_empty_string_returns_none".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("f20(Some('')) must return None".into()) } }
+}
+
+fn auth_f124_no_cookie_header() -> t24 {
+    let start = Instant::now();
+    let headers = axum::http::HeaderMap::new();
+    let ok = auth::f124(&headers).is_none();
+    t24 { name: "auth_f124_no_cookie_header".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("no cookie header → None".into()) } }
+}
+
+fn auth_f124_other_cookies_only() -> t24 {
+    let start = Instant::now();
+    let mut headers = axum::http::HeaderMap::new();
+    headers.insert("cookie", "other_cookie=abc; tracking=xyz".parse().unwrap());
+    let ok = auth::f124(&headers).is_none();
+    t24 { name: "auth_f124_other_cookies_only".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("cookies without rr_session → None".into()) } }
+}
+
+fn auth_f124_extracts_session_cookie() -> t24 {
+    let start = Instant::now();
+    let mut headers = axum::http::HeaderMap::new();
+    headers.insert("cookie", "other=1; rr_session=test_value_123; tracking=z".parse().unwrap());
+    let result = auth::f124(&headers);
+    let ok = result.as_deref() == Some("test_value_123");
+    t24 { name: "auth_f124_extracts_session_cookie".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some(format!("expected Some(test_value_123), got {:?}", result)) } }
+}
+
+// ---------------------------------------------------------------------------
+// Vault edge cases
+// ---------------------------------------------------------------------------
+
+fn vault_key_32_bytes_works() -> t24 {
+    let start = Instant::now();
+    let key = [0xABu8; 32];
+    let ok = t1::new(&key).is_ok();
+    t24 { name: "vault_key_32_bytes_works".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("32-byte key must succeed".into()) } }
+}
+
+fn vault_decrypt_exactly_nonce_length() -> t24 {
+    let start = Instant::now();
+    let v = t1::new(&[1u8; 32]).unwrap();
+    // 12 bytes = exactly nonce length, no ciphertext — should fail
+    let ok = f11(&v, &[0u8; 12]).is_err();
+    t24 { name: "vault_decrypt_exactly_nonce_length".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("12 bytes (nonce only, no ciphertext) must fail".into()) } }
+}
+
+fn vault_large_plaintext() -> t24 {
+    let start = Instant::now();
+    let v = t1::new(&[2u8; 32]).unwrap();
+    let large = vec![0x42u8; 65536]; // 64KB
+    let encrypted = f10(&v, &large);
+    let ok = match encrypted {
+        Ok(enc) => f11(&v, &enc).map(|dec| dec == large).unwrap_or(false),
+        Err(_) => false,
+    };
+    t24 { name: "vault_large_plaintext".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("64KB plaintext must round-trip".into()) } }
+}
+
+fn vault_encrypt_different_each_time() -> t24 {
+    let start = Instant::now();
+    let v = t1::new(&[3u8; 32]).unwrap();
+    let plain = b"test-data";
+    let enc1 = f10(&v, plain).unwrap();
+    let enc2 = f10(&v, plain).unwrap();
+    let enc3 = f10(&v, plain).unwrap();
+    // All three should produce different ciphertext (different nonces)
+    let ok = enc1 != enc2 && enc2 != enc3 && enc1 != enc3;
+    t24 { name: "vault_encrypt_different_each_time".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("same plaintext must produce different ciphertext each time".into()) } }
+}
+
+// ---------------------------------------------------------------------------
+// ISO 8583 edge cases
+// ---------------------------------------------------------------------------
+
+fn switch_0200_stan_zero() -> t24 {
+    let start = Instant::now();
+    let req = t2 { pan_encrypted: vec![1, 2, 3], amount_cents: 100, stan: 0 };
+    let ok = f12(&req).is_ok(); // STAN=0 is valid
+    t24 { name: "switch_0200_stan_zero".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("STAN=0 must be valid".into()) } }
+}
+
+fn switch_0200_max_amount() -> t24 {
+    let start = Instant::now();
+    let req = t2 { pan_encrypted: vec![1], amount_cents: 99_999_999, stan: 1 };
+    let ok = f12(&req).is_ok();
+    t24 { name: "switch_0200_max_amount".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("99999999 cents must succeed".into()) } }
+}
+
+fn switch_0200_boundary_amount_1() -> t24 {
+    let start = Instant::now();
+    let req = t2 { pan_encrypted: vec![1], amount_cents: 1, stan: 1 };
+    let ok = f12(&req).is_ok();
+    t24 { name: "switch_0200_boundary_amount_1".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("1 cent must succeed".into()) } }
+}
+
+fn switch_0200_amount_99999999() -> t24 {
+    let start = Instant::now();
+    // Just above max should fail
+    let req = t2 { pan_encrypted: vec![1], amount_cents: 100_000_000, stan: 1 };
+    let ok = f12(&req).is_err();
+    t24 { name: "switch_0200_amount_99999999".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("100000000 cents must fail (max is 99999999)".into()) } }
+}
+
+fn switch_0100_default_merchant() -> t24 {
+    let start = Instant::now();
+    let req = t30::default();
+    let msg = f17(&req).unwrap();
+    let ok = msg.raw.windows(15).any(|w| w == b"ROGUEREPO000000");
+    t24 { name: "switch_0100_default_merchant".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("default t30 must have ROGUEREPO000000".into()) } }
+}
+
+fn switch_0210_boundary_32_bytes() -> t24 {
+    let start = Instant::now();
+    // Exactly 32 bytes: MTI(4) + bitmap(8) + response_code(2) + amount(12) + STAN(6) = 32
+    let mut raw = Vec::new();
+    raw.extend_from_slice(b"0210");
+    raw.extend_from_slice(&[0u8; 8]); // bitmap
+    raw.extend_from_slice(b"00"); // response code = approved
+    raw.extend_from_slice(b"000000000100"); // amount = 100 cents
+    raw.extend_from_slice(b"000042"); // STAN = 42
+    let result = f18(&raw);
+    let ok = match result {
+        Ok(r) => r.approved && r.amount_cents == 100 && r.stan == 42,
+        Err(_) => false,
+    };
+    t24 { name: "switch_0210_boundary_32_bytes".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("exact 32-byte 0210 must parse".into()) } }
+}
+
+fn switch_0210_invalid_amount_string() -> t24 {
+    let start = Instant::now();
+    let mut raw = Vec::new();
+    raw.extend_from_slice(b"0210");
+    raw.extend_from_slice(&[0u8; 8]);
+    raw.extend_from_slice(b"00");
+    raw.extend_from_slice(b"NOT_A_NUMBER"); // invalid amount
+    raw.extend_from_slice(b"000001");
+    let ok = f18(&raw).is_err();
+    t24 { name: "switch_0210_invalid_amount_string".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("non-numeric amount must fail parse".into()) } }
+}
+
+fn switch_0400_pan_empty() -> t24 {
+    let start = Instant::now();
+    let req = t32 { pan_encrypted: vec![], amount_cents: 100, original_stan: 1, reversal_stan: 2, reason: t34::Timeout };
+    let ok = f19(&req).is_ok(); // empty PAN is valid (length=0)
+    t24 { name: "switch_0400_pan_empty".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("empty PAN must be valid for reversal".into()) } }
+}
+
+fn switch_0400_all_reasons_build() -> t24 {
+    let start = Instant::now();
+    let reasons = [t34::Timeout, t34::CustomerCancel, t34::SystemError];
+    let ok = reasons.iter().all(|r| {
+        let req = t32 { pan_encrypted: vec![1], amount_cents: 100, original_stan: 1, reversal_stan: 2, reason: *r };
+        f19(&req).is_ok()
+    });
+    t24 { name: "switch_0400_all_reasons_build".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("all reversal reasons must build successfully".into()) } }
+}
+
+// ---------------------------------------------------------------------------
+// TCP endpoint config
+// ---------------------------------------------------------------------------
+
+fn tcp_endpoint_from_env_missing() -> t24 {
+    let start = Instant::now();
+    // SWITCH_HOST not set → from_env returns None
+    let ok = t39::from_env().is_none() || std::env::var("SWITCH_HOST").is_ok();
+    t24 { name: "tcp_endpoint_from_env_missing".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("no SWITCH_HOST → from_env returns None".into()) } }
+}
+
+fn tcp_endpoint_addr_format() -> t24 {
+    let start = Instant::now();
+    let ep = t39 { host: "10.0.0.1".into(), port: 8583, timeout_ms: 5000 };
+    let ok = format!("{}:{}", ep.host, ep.port) == "10.0.0.1:8583";
+    t24 { name: "tcp_endpoint_addr_format".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("addr must format as host:port".into()) } }
+}
+
+// ---------------------------------------------------------------------------
+// More Stripe coverage
+// ---------------------------------------------------------------------------
+
+fn stripe_card_declined_maps_to_05() -> t24 {
+    let start = Instant::now();
+    let ok = t36::from_stripe("card_declined")
+        .map(|c| c.to_iso_response() == *b"05")
+        .unwrap_or(false);
+    t24 { name: "stripe_card_declined_maps_to_05".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("card_declined must map to ISO 05".into()) } }
+}
+
+fn stripe_all_events_have_mti() -> t24 {
+    let start = Instant::now();
+    let events = [
+        ("payment_intent.created", "0100"),
+        ("charge.succeeded", "0200"),
+        ("charge.captured", "0220"),
+        ("charge.refunded", "0420"),
+        ("charge.failed", "0210"),
+        ("payment_intent.canceled", "0400"),
+        ("dispute.created", "0400"),
+    ];
+    let ok = events.iter().all(|(event, expected_mti)| {
+        t37::from_stripe(event)
+            .map(|e| e.iso_mti() == *expected_mti)
+            .unwrap_or(false)
+    });
+    t24 { name: "stripe_all_events_have_mti".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("all 7 Stripe events must map to expected MTIs".into()) } }
 }
