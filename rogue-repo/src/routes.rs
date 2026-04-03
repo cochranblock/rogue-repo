@@ -136,8 +136,9 @@ pub async fn f87(
 
     tracing::info!("ISO 8583 MTI 0200 built: {} bytes", iso_msg.raw.len());
 
-    // Send to bank via TCP if SWITCH_HOST configured, otherwise credit without payment
-    let bank_approved = match t39::from_env() {
+    // Send to bank via TCP — SWITCH_HOST is required. No fallback credit.
+    let iso_len = iso_msg.raw.len();
+    match t39::from_env() {
         Some(endpoint) => {
             match f129(&endpoint, &iso_msg).await {
                 Ok(resp) => {
@@ -147,7 +148,6 @@ pub async fn f87(
                             resp.stan,
                             resp.auth_code.map(|c| String::from_utf8_lossy(&c).to_string())
                         );
-                        true
                     } else {
                         tracing::warn!(
                             "Bank declined: response_code={}",
@@ -178,26 +178,24 @@ pub async fn f87(
             }
         }
         None => {
-            tracing::warn!("SWITCH_HOST not set — crediting bucks without bank authorization");
-            false
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(t84 {
+                    s85: false,
+                    s84: "Payment processor not configured".into(),
+                }),
+            );
         }
     };
 
-    // Credit 420 Rogue Bucks
+    // Credit 420 Rogue Bucks — only reached after bank approval
     let ledger = t4::new(pool.clone());
     match ledger.f16(p2.s87, 420).await {
         Ok(()) => {
-            let msg = if bank_approved {
-                format!(
-                    "420 Rogue Bucks credited. Bank approved ({} bytes sent).",
-                    iso_msg.raw.len()
-                )
-            } else {
-                format!(
-                    "420 Rogue Bucks credited. Bank send skipped (SWITCH_HOST not set, {} bytes built).",
-                    iso_msg.raw.len()
-                )
-            };
+            let msg = format!(
+                "420 Rogue Bucks credited. Bank approved ({} bytes sent).",
+                iso_len
+            );
             (StatusCode::OK, Json(t84 { s85: true, s84: msg }))
         }
         Err(e) => (

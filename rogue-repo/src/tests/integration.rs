@@ -5,8 +5,10 @@
 
 use std::time::Instant;
 
+use axum::{routing::get, Router};
 use crate::ledger::t4;
 use crate::switch::{f12, f127, f129, t2, t39};
+use crate::{auth, pwa, routes};
 use sqlx::postgres::PgPoolOptions;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
@@ -23,6 +25,10 @@ pub async fn f50() -> Vec<t24> {
         out.push(ledger_credit_bucks(&url).await);
         out.push(ledger_insufficient_rejected(&url).await);
         out.push(ledger_device_exists_rejected(&url).await);
+        // Free-bucks exploit fix: authenticated buy-bucks without SWITCH_HOST must return 503
+        out.push(buy_bucks_no_switch_host_returns_503(&url).await);
+        // Verify bucks are NOT credited when SWITCH_HOST is absent
+        out.push(buy_bucks_no_switch_host_balance_unchanged(&url).await);
     }
 
     // ISO 8583 TCP mock tests — no real bank required
@@ -243,6 +249,131 @@ async fn ledger_insufficient_rejected(url: &str) -> t24 {
             Some("f14 with 10 bucks must fail".into())
         },
     }
+}
+
+// ---------------------------------------------------------------------------
+// Free-bucks exploit fix tests (BACKLOG #3)
+// ---------------------------------------------------------------------------
+
+/// Spin up a real axum server with a real DB pool, forge a valid session cookie,
+/// hit POST /buy-bucks with SWITCH_HOST unset, assert 503 — not 200.
+async fn buy_bucks_no_switch_host_returns_503(url: &str) -> t24 {
+    let start = Instant::now();
+    let pool = match PgPoolOptions::new().max_connections(2).connect(url).await {
+        Ok(p) => p,
+        Err(e) => return t24 { name: "buy_bucks_no_switch_host_returns_503".into(), passed: false, duration_ms: start.elapsed().as_millis() as u64, message: Some(format!("pool: {}", e)) },
+    };
+    if let Err(e) = sqlx::migrate!("../migrations").run(&pool).await {
+        return t24 { name: "buy_bucks_no_switch_host_returns_503".into(), passed: false, duration_ms: start.elapsed().as_millis() as u64, message: Some(format!("migrate: {}", e)) };
+    }
+
+    // Create a test user
+    let uid = Uuid::new_v4();
+    sqlx::query("INSERT INTO users (id, email, rogue_bucks_balance, email_verified_at) VALUES ($1, $2, 1000, NOW())")
+        .bind(uid)
+        .bind(format!("exploit-test-{}@x.com", uid))
+        .execute(&pool).await.ok();
+
+    // Forge a valid signed session cookie for this user
+    let secret = auth::f125();
+    let exp = (std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64) + 3600;
+    let payload = format!("{}:{}", uid, exp);
+    use hmac::{Hmac, Mac};
+    use sha2::Sha256;
+    let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).unwrap();
+    mac.update(payload.as_bytes());
+    let sig = mac.finalize().into_bytes();
+    let sig_b64 = base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, sig);
+    let cookie_val = format!("{}.{}", payload, sig_b64);
+
+    // Spin up real axum server with DB pool
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let state = routes::t0 { s0: Some(pool.clone()) };
+    let app = axum::Router::new()
+        .route("/buy-bucks", axum::routing::post(routes::f87))
+        .with_state(state);
+    tokio::spawn(async move { let _ = axum::serve(listener, app).await; });
+    tokio::time::sleep(tokio::time::Duration::from_millis(20)).await;
+
+    // Ensure SWITCH_HOST is not set
+    std::env::remove_var("SWITCH_HOST");
+
+    let body = serde_json::json!({ "user_id": uid, "pan_encrypted": [1u8, 2, 3] });
+    let client = reqwest::Client::new();
+    let result = client
+        .post(format!("http://{}/buy-bucks", addr))
+        .header("Cookie", format!("rr_session={}", cookie_val))
+        .json(&body)
+        .send().await;
+
+    // Cleanup
+    sqlx::query("DELETE FROM users WHERE id = $1").bind(uid).execute(&pool).await.ok();
+
+    let ok = match result {
+        Ok(res) => res.status().as_u16() == 503,
+        Err(_) => false,
+    };
+    t24 { name: "buy_bucks_no_switch_host_returns_503".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("authenticated buy-bucks without SWITCH_HOST must return 503, not 200".into()) } }
+}
+
+/// Verify that when SWITCH_HOST is absent, the user's Rogue Bucks balance is NOT changed.
+async fn buy_bucks_no_switch_host_balance_unchanged(url: &str) -> t24 {
+    let start = Instant::now();
+    let pool = match PgPoolOptions::new().max_connections(2).connect(url).await {
+        Ok(p) => p,
+        Err(e) => return t24 { name: "buy_bucks_no_switch_host_balance_unchanged".into(), passed: false, duration_ms: start.elapsed().as_millis() as u64, message: Some(format!("pool: {}", e)) },
+    };
+
+    let uid = Uuid::new_v4();
+    let initial_balance: i64 = 500;
+    sqlx::query("INSERT INTO users (id, email, rogue_bucks_balance, email_verified_at) VALUES ($1, $2, $3, NOW())")
+        .bind(uid)
+        .bind(format!("balance-test-{}@x.com", uid))
+        .bind(initial_balance)
+        .execute(&pool).await.ok();
+
+    // Forge session
+    let secret = auth::f125();
+    let exp = (std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64) + 3600;
+    let payload = format!("{}:{}", uid, exp);
+    use hmac::{Hmac, Mac};
+    use sha2::Sha256;
+    let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).unwrap();
+    mac.update(payload.as_bytes());
+    let sig = mac.finalize().into_bytes();
+    let sig_b64 = base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, sig);
+    let cookie_val = format!("{}.{}", payload, sig_b64);
+
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let state = routes::t0 { s0: Some(pool.clone()) };
+    let app = axum::Router::new()
+        .route("/buy-bucks", axum::routing::post(routes::f87))
+        .with_state(state);
+    tokio::spawn(async move { let _ = axum::serve(listener, app).await; });
+    tokio::time::sleep(tokio::time::Duration::from_millis(20)).await;
+
+    std::env::remove_var("SWITCH_HOST");
+
+    let body = serde_json::json!({ "user_id": uid, "pan_encrypted": [1u8, 2, 3] });
+    let client = reqwest::Client::new();
+    let _ = client
+        .post(format!("http://{}/buy-bucks", addr))
+        .header("Cookie", format!("rr_session={}", cookie_val))
+        .json(&body)
+        .send().await;
+
+    // Balance must be unchanged
+    let row: (i64,) = sqlx::query_as("SELECT rogue_bucks_balance FROM users WHERE id = $1")
+        .bind(uid)
+        .fetch_one(&pool).await
+        .unwrap_or((initial_balance,));
+
+    sqlx::query("DELETE FROM users WHERE id = $1").bind(uid).execute(&pool).await.ok();
+
+    let ok = row.0 == initial_balance;
+    t24 { name: "buy_bucks_no_switch_host_balance_unchanged".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some(format!("balance must stay {}, got {}", initial_balance, row.0)) } }
 }
 
 // ---------------------------------------------------------------------------
