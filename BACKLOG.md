@@ -9,7 +9,7 @@ Tags: `[build]` `[test]` `[docs]` `[feature]` `[fix]` `[research]`
 
 ---
 
-1. `[fix]` **Wire ISO 8583 bank TCP endpoint** — messages build but never send. `/buy-bucks` credits bucks without payment. This is the single biggest gap between "demo" and "product." No external dependency.
+1. ~~`[fix]` **Wire ISO 8583 bank TCP endpoint**~~ DONE (tcp.rs: f127/f128/f129, wired into f87. Set SWITCH_HOST/SWITCH_PORT to activate. Graceful fallback when not configured.)
 2. `[feature]` **Implement Stripe webhook verification (f123)** — HMAC-SHA256 over payload vs `Stripe-Signature` header. Requires `STRIPE_SECRET_KEY` env var. Unblocks f120-f122.
 3. `[feature]` **Implement Stripe→ISO 8583 translation (f120)** — parse webhook JSON, build corresponding ISO message. Depends on f123 (verify first, translate second).
 4. `[feature]` **Implement ISO→Stripe response translation (f122)** — map ISO response codes back to Stripe confirm/cancel calls via reqwest. Depends on f120.

@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::auth;
 use crate::ledger::t4;
 use crate::pwa;
-use crate::switch::{f12, t2};
+use crate::switch::{f12, f129, t2, t39};
 
 /// f126 = require_session — extract and validate session from headers.
 /// Returns authenticated user_id or 401 error.
@@ -134,24 +134,72 @@ pub async fn f87(
         }
     };
 
-    tracing::info!(
-        "ISO 8583 MTI 0200 built: {} bytes (bank send not yet wired)",
-        iso_msg.raw.len()
-    );
+    tracing::info!("ISO 8583 MTI 0200 built: {} bytes", iso_msg.raw.len());
 
-    // Credit 420 Rogue Bucks (bank send step skipped — no TCP endpoint yet)
+    // Send to bank via TCP if SWITCH_HOST configured, otherwise credit without payment
+    let bank_approved = match t39::from_env() {
+        Some(endpoint) => {
+            match f129(&endpoint, &iso_msg).await {
+                Ok(resp) => {
+                    if resp.approved {
+                        tracing::info!(
+                            "Bank approved: STAN={}, auth_code={:?}",
+                            resp.stan,
+                            resp.auth_code.map(|c| String::from_utf8_lossy(&c).to_string())
+                        );
+                        true
+                    } else {
+                        tracing::warn!(
+                            "Bank declined: response_code={}",
+                            String::from_utf8_lossy(&resp.response_code)
+                        );
+                        return (
+                            StatusCode::PAYMENT_REQUIRED,
+                            Json(t84 {
+                                s85: false,
+                                s84: format!(
+                                    "Payment declined (ISO response code: {})",
+                                    String::from_utf8_lossy(&resp.response_code)
+                                ),
+                            }),
+                        );
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("Bank TCP error: {}", e);
+                    return (
+                        StatusCode::BAD_GATEWAY,
+                        Json(t84 {
+                            s85: false,
+                            s84: format!("Payment processor error: {}", e),
+                        }),
+                    );
+                }
+            }
+        }
+        None => {
+            tracing::warn!("SWITCH_HOST not set — crediting bucks without bank authorization");
+            false
+        }
+    };
+
+    // Credit 420 Rogue Bucks
     let ledger = t4::new(pool.clone());
     match ledger.f16(p2.s87, 420).await {
-        Ok(()) => (
-            StatusCode::OK,
-            Json(t84 {
-                s85: true,
-                s84: format!(
-                    "420 Rogue Bucks credited. ISO 8583 0200 built ({} bytes). Bank send pending.",
+        Ok(()) => {
+            let msg = if bank_approved {
+                format!(
+                    "420 Rogue Bucks credited. Bank approved ({} bytes sent).",
                     iso_msg.raw.len()
-                ),
-            }),
-        ),
+                )
+            } else {
+                format!(
+                    "420 Rogue Bucks credited. Bank send skipped (SWITCH_HOST not set, {} bytes built).",
+                    iso_msg.raw.len()
+                )
+            };
+            (StatusCode::OK, Json(t84 { s85: true, s84: msg }))
+        }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(t84 {
