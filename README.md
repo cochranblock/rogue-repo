@@ -145,3 +145,7 @@ Exit 0 = pass, 1 = fail. TRIPLE SIMS gate (3x sequential `cargo test` for determ
 ## Tokenization
 
 This codebase uses compressed identifiers (f#, t#, s#) for AI-context optimization. See `rogue-repo/compression_map.md` for the full mapping. Example: `f87` = `serve_buy_bucks`, `t2` = `PurchaseRequest`.
+
+## Methodology
+
+Documentation accuracy is enforced via **P23 (Triple Lens Research Protocol)** — architecture decisions and status claims are analyzed from optimist, pessimist, and paranoia perspectives before being committed. "What Works" and "What Doesn't" tables are verified against code. Coming Soon features link to their blocking dependency so visitors can follow the chain.

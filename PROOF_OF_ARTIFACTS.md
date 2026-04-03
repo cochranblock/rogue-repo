@@ -93,4 +93,10 @@ cargo run -p rogue-runner --bin rogue-runner-test --features tests # EXIT 0 = pa
 
 ---
 
+## Methodology
+
+This document is maintained via **P23 (Triple Lens Research Protocol)** — optimist, pessimist, and paranoia perspectives synthesized into honest assessment. Claims are verified against code before each update. Architecture diagrams use dashed lines for unwired components. Status columns distinguish Working / Stubs / Playable / Blocked.
+
+---
+
 *Part of the [CochranBlock](https://cochranblock.org) architecture.*
