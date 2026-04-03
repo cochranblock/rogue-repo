@@ -395,7 +395,7 @@ async fn get_icon_200(client: &reqwest::Client, base: &str) -> t24 {
 async fn get_app_image_200(client: &reqwest::Client, base: &str) -> t24 {
     let start = Instant::now();
     let r = client
-        .get(format!("{}/assets/apps/rogue-runner.png", base))
+        .get(format!("{}/assets/apps/rogue-runner.webp", base))
         .send()
         .await;
     let ok = match r {
@@ -406,7 +406,7 @@ async fn get_app_image_200(client: &reqwest::Client, base: &str) -> t24 {
                 .get("content-type")
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("");
-            status && (ct.contains("image") || ct.contains("png"))
+            status && (ct.contains("image") || ct.contains("webp"))
         }
         Err(_) => false,
     };
@@ -417,7 +417,7 @@ async fn get_app_image_200(client: &reqwest::Client, base: &str) -> t24 {
         message: if ok {
             None
         } else {
-            Some("GET /assets/apps/rogue-runner.png 200 + image content-type".into())
+            Some("GET /assets/apps/rogue-runner.webp 200 + image content-type".into())
         },
     }
 }
