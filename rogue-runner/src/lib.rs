@@ -179,7 +179,7 @@ impl t88 {
         self.s94 = 0;
     }
 
-    /// f111 = update — pure logic, no I/O. Accepts t35 and dt.
+    /// f111 = update — pure logic, no I/O. Accepts t35 and dt. screen_w/screen_h for layout.
     pub fn f111(&mut self, action: t35, dt: f32, screen_w: f32, screen_h: f32) {
         if action == t35::Start && (self.s88 == "menu" || self.s88 == "gameover") {
             self.f107(screen_h);
@@ -235,5 +235,157 @@ impl t88 {
         if self.s94 >= ld.obstacles.len() {
             self.f110();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- f95 (mulberry32 PRNG) ---
+
+    #[test]
+    fn prng_deterministic() {
+        let mut rng1 = f95(42);
+        let mut rng2 = f95(42);
+        for _ in 0..100 {
+            assert_eq!(rng1().to_bits(), rng2().to_bits());
+        }
+    }
+
+    #[test]
+    fn prng_different_seeds_differ() {
+        let mut rng1 = f95(42);
+        let mut rng2 = f95(9999);
+        let mut differ = 0;
+        for _ in 0..100 {
+            if rng1().to_bits() != rng2().to_bits() {
+                differ += 1;
+            }
+        }
+        assert!(differ > 50, "divergent seeds should produce mostly different values, got {} differences", differ);
+    }
+
+    #[test]
+    fn prng_range_0_to_1() {
+        let mut rng = f95(999);
+        for _ in 0..1000 {
+            let v = rng();
+            assert!((0.0..1.0).contains(&v), "PRNG output {} out of [0,1)", v);
+        }
+    }
+
+    // --- f117 (zone_for_level) ---
+
+    #[test]
+    fn zone_level_1() {
+        assert_eq!(f117(1), 0);
+    }
+
+    #[test]
+    fn zone_level_50() {
+        assert_eq!(f117(50), 0);
+    }
+
+    #[test]
+    fn zone_level_51() {
+        assert_eq!(f117(51), 1);
+    }
+
+    #[test]
+    fn zone_level_1000() {
+        assert_eq!(f117(1000), 19);
+    }
+
+    #[test]
+    fn zone_level_0_saturates() {
+        assert_eq!(f117(0), 0);
+    }
+
+    // --- f96 (generate_level) ---
+
+    #[test]
+    fn level_gen_deterministic() {
+        let a = f96(42);
+        let b = f96(42);
+        assert_eq!(a.speed, b.speed);
+        assert_eq!(a.obstacles.len(), b.obstacles.len());
+        for (oa, ob) in a.obstacles.iter().zip(b.obstacles.iter()) {
+            assert_eq!(oa.x.to_bits(), ob.x.to_bits());
+            assert_eq!(oa.h.to_bits(), ob.h.to_bits());
+            assert_eq!(oa.w.to_bits(), ob.w.to_bits());
+        }
+    }
+
+    #[test]
+    fn level_gen_speed_increases() {
+        let l1 = f96(1);
+        let l500 = f96(500);
+        let l1000 = f96(1000);
+        assert!(l500.speed > l1.speed);
+        assert!(l1000.speed > l500.speed);
+    }
+
+    #[test]
+    fn level_gen_obstacle_count_increases() {
+        let l1 = f96(1);
+        let l500 = f96(500);
+        assert!(l500.obstacles.len() > l1.obstacles.len());
+    }
+
+    #[test]
+    fn level_gen_obstacles_have_positive_dimensions() {
+        for level in [1, 50, 100, 500, 1000] {
+            let ld = f96(level);
+            for o in &ld.obstacles {
+                assert!(o.x > 0.0, "level {} obstacle x <= 0", level);
+                assert!(o.h > 0.0, "level {} obstacle h <= 0", level);
+                assert!(o.w > 0.0, "level {} obstacle w <= 0", level);
+            }
+        }
+    }
+
+    // --- t88 (GameState) + f111 (update) ---
+
+    #[test]
+    fn game_state_default_is_menu() {
+        let gs = t88::default();
+        assert_eq!(gs.s88, "menu");
+        assert_eq!(gs.s89, 1);
+        assert_eq!(gs.s90, 0);
+    }
+
+    #[test]
+    fn game_start_transitions_to_play() {
+        let mut gs = t88::default();
+        gs.f111(t35::Start, 0.016, 800.0, 600.0);
+        assert_eq!(gs.s88, "play");
+        assert!(gs.s93.is_some());
+    }
+
+    #[test]
+    fn jump_does_nothing_in_menu() {
+        let mut gs = t88::default();
+        let y_before = gs.s91;
+        gs.f111(t35::Jump, 0.016, 800.0, 600.0);
+        assert_eq!(gs.s88, "menu");
+        assert_eq!(gs.s91, y_before);
+    }
+
+    #[test]
+    fn gravity_pulls_player_down() {
+        let mut gs = t88::default();
+        gs.f111(t35::Start, 0.016, 800.0, 600.0);
+        gs.f111(t35::Jump, 0.016, 800.0, 600.0);
+        let y_after_jump = gs.s91;
+        for _ in 0..10 {
+            gs.f111(t35::None, 0.016, 800.0, 600.0);
+        }
+        assert_ne!(gs.s91.to_bits(), y_after_jump.to_bits());
+    }
+
+    #[test]
+    fn max_level_clamped() {
+        assert_eq!(c90, 1000);
     }
 }

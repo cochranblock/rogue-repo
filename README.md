@@ -140,7 +140,7 @@ cargo run -p rogue-runner --bin rogue-runner-test --features tests
 
 Exit 0 = pass, 1 = fail. TRIPLE SIMS gate (3x sequential `cargo test` for determinism) via exopack.
 
-**Test coverage:** 65+ tests — vault encryption (7), ISO 8583 message builder (35), ledger transactions (5), HTTP routes (18).
+**Test coverage:** 88+ tests — vault encryption (7), ISO 8583 message builder (35), Stripe mapping (6), ledger transactions (5), HTTP routes (20), rogue-runner game logic (17).
 
 ## Tokenization
 

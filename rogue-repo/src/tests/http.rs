@@ -64,6 +64,7 @@ pub async fn f51() -> Vec<t24> {
     out.push(get_app_image_200(&client, &base).await);
     out.push(get_rogue_runner_200(&client, &base).await);
     out.push(get_rogue_runner_wasm_200(&client, &base).await);
+    out.push(get_null_terminal_200(&client, &base).await);
     out.push(get_not_found_404(&client, &base).await);
     out.push(get_health_json_ok(&client, &base).await);
     out.push(get_asset_404(&client, &base).await);
@@ -507,6 +508,38 @@ async fn get_index_contains_economy(client: &reqwest::Client, base: &str) -> t24
             None
         } else {
             Some("GET / must show economy table".into())
+        },
+    }
+}
+
+async fn get_null_terminal_200(client: &reqwest::Client, base: &str) -> t24 {
+    let start = Instant::now();
+    let r = client
+        .get(format!("{}/apps/null-terminal", base))
+        .send()
+        .await;
+    let ok = match r {
+        Ok(res) => {
+            let status = res.status() == 200;
+            let ct = res
+                .headers()
+                .get("content-type")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("")
+                .to_string();
+            let body = res.text().await.unwrap_or_default();
+            status && ct.contains("text/html") && body.contains("Null Terminal")
+        }
+        Err(_) => false,
+    };
+    t24 {
+        name: "get_null_terminal_200".into(),
+        passed: ok,
+        duration_ms: start.elapsed().as_millis() as u64,
+        message: if ok {
+            None
+        } else {
+            Some("GET /apps/null-terminal 200 + HTML + Null Terminal".into())
         },
     }
 }

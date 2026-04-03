@@ -5,7 +5,7 @@
 
 use std::time::Instant;
 
-use crate::switch::{f12, f17, f18, f19, t2, t30, t32, t34};
+use crate::switch::{f12, f17, f18, f19, t2, t30, t32, t34, t36, t37};
 use crate::vault::{f10, f11, t1};
 
 use crate::tests::t24;
@@ -39,6 +39,13 @@ pub fn f49() -> Vec<t24> {
         switch_0400_has_original_stan(),
         switch_0400_reason_codes(),
         switch_0400_invalid_amount(),
+        // Stripe mapping tests
+        stripe_decline_code_round_trip(),
+        stripe_decline_approved_is_00(),
+        stripe_event_kind_parse(),
+        stripe_event_mti_mapping(),
+        stripe_unknown_event_returns_none(),
+        stripe_unknown_decline_returns_none(),
     ]
 }
 
@@ -660,6 +667,136 @@ fn switch_0400_invalid_amount() -> t24 {
             None
         } else {
             Some("0400 amount 0 must fail".into())
+        },
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Stripe ↔ ISO 8583 mapping tests
+// ---------------------------------------------------------------------------
+
+fn stripe_decline_code_round_trip() -> t24 {
+    let start = Instant::now();
+    let codes = [
+        ("approved", b"00"),
+        ("insufficient_funds", b"51"),
+        ("lost_card", b"41"),
+        ("stolen_card", b"43"),
+        ("expired_card", b"54"),
+        ("incorrect_cvc", b"82"),
+        ("processing_error", b"96"),
+        ("do_not_honor", b"05"),
+        ("fraudulent", b"59"),
+    ];
+    let ok = codes.iter().all(|(stripe_code, expected_iso)| {
+        let parsed = t36::from_stripe(stripe_code).unwrap();
+        &parsed.to_iso_response() == *expected_iso
+    });
+    t24 {
+        name: "stripe_decline_code_round_trip".into(),
+        passed: ok,
+        duration_ms: start.elapsed().as_millis() as u64,
+        message: if ok {
+            None
+        } else {
+            Some("all Stripe decline codes must map to correct ISO response codes".into())
+        },
+    }
+}
+
+fn stripe_decline_approved_is_00() -> t24 {
+    let start = Instant::now();
+    let ok = t36::from_stripe("approved")
+        .map(|c| c.to_iso_response() == *b"00")
+        .unwrap_or(false);
+    t24 {
+        name: "stripe_decline_approved_is_00".into(),
+        passed: ok,
+        duration_ms: start.elapsed().as_millis() as u64,
+        message: if ok {
+            None
+        } else {
+            Some("Stripe 'approved' must map to ISO 00".into())
+        },
+    }
+}
+
+fn stripe_event_kind_parse() -> t24 {
+    let start = Instant::now();
+    let events = [
+        "payment_intent.created",
+        "charge.succeeded",
+        "charge.captured",
+        "charge.refunded",
+        "charge.failed",
+        "payment_intent.canceled",
+        "dispute.created",
+    ];
+    let ok = events.iter().all(|e| t37::from_stripe(e).is_some());
+    t24 {
+        name: "stripe_event_kind_parse".into(),
+        passed: ok,
+        duration_ms: start.elapsed().as_millis() as u64,
+        message: if ok {
+            None
+        } else {
+            Some("all defined Stripe event types must parse".into())
+        },
+    }
+}
+
+fn stripe_event_mti_mapping() -> t24 {
+    let start = Instant::now();
+    let ok = t37::from_stripe("payment_intent.created")
+        .map(|e| e.iso_mti() == "0100")
+        .unwrap_or(false)
+        && t37::from_stripe("charge.succeeded")
+            .map(|e| e.iso_mti() == "0200")
+            .unwrap_or(false)
+        && t37::from_stripe("charge.refunded")
+            .map(|e| e.iso_mti() == "0420")
+            .unwrap_or(false)
+        && t37::from_stripe("charge.failed")
+            .map(|e| e.iso_mti() == "0210")
+            .unwrap_or(false);
+    t24 {
+        name: "stripe_event_mti_mapping".into(),
+        passed: ok,
+        duration_ms: start.elapsed().as_millis() as u64,
+        message: if ok {
+            None
+        } else {
+            Some("Stripe events must map to correct ISO MTIs".into())
+        },
+    }
+}
+
+fn stripe_unknown_event_returns_none() -> t24 {
+    let start = Instant::now();
+    let ok = t37::from_stripe("bogus.event").is_none();
+    t24 {
+        name: "stripe_unknown_event_returns_none".into(),
+        passed: ok,
+        duration_ms: start.elapsed().as_millis() as u64,
+        message: if ok {
+            None
+        } else {
+            Some("unknown Stripe event must return None".into())
+        },
+    }
+}
+
+fn stripe_unknown_decline_returns_none() -> t24 {
+    let start = Instant::now();
+    let ok = t36::from_stripe("bogus_code").is_none();
+    t24 {
+        name: "stripe_unknown_decline_returns_none".into(),
+        passed: ok,
+        duration_ms: start.elapsed().as_millis() as u64,
+        message: if ok {
+            None
+        } else {
+            Some("unknown Stripe decline code must return None".into())
         },
     }
 }
