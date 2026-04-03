@@ -11,9 +11,9 @@ Tags: `[build]` `[test]` `[docs]` `[feature]` `[fix]` `[research]`
 
 1. ~~`[fix]` **Wire ISO 8583 bank TCP endpoint**~~ DONE (tcp.rs: f127/f128/f129, wired into f87. Set SWITCH_HOST/SWITCH_PORT to activate. Graceful fallback when not configured.)
 2. ~~`[feature]` **Implement Stripe webhook verification (f123)**~~ DONE (f123: HMAC-SHA256 over `{t}.{payload}` with STRIPE_WEBHOOK_SECRET, parses `t=,v1=` header, hex compare. 6 unit tests. Unblocks f120-f122.)
-3. `[feature]` **Implement Stripe→ISO 8583 translation (f120)** — parse webhook JSON, build corresponding ISO message. Depends on f123 (verify first, translate second).
-4. `[feature]` **Implement ISO→Stripe response translation (f122)** — map ISO response codes back to Stripe confirm/cancel calls via reqwest. Depends on f120.
-5. `[feature]` **Build MTI 0220 completion message (f121)** — capture after auth hold. Last missing ISO message type for full Stripe flow.
+3. `[fix]` **Kill the free-bucks no-bank fallback in f87** — P23 Paranoia: if SWITCH_HOST is not set, f87 credits 420 Rogue Bucks anyway (`bank_approved=false`, falls through to ledger.f16). Any authenticated user gets free bucks. Routes.rs:180-184. Fix: return 503 SERVICE_UNAVAILABLE when SWITCH_HOST unset, not free credit. Zero dependencies. Financial exploit in current code.
+4. `[fix]` **CSRF tokens + rate limiting on auth endpoints** — P23 Paranoia: POST /login, /register, /buy-bucks have no CSRF tokens; GET /logout is CSRF-trivial via `<img>`. No brute-force protection on /login (Argon2 CPU burn on defender, free on attacker). Add axum-csrf or double-submit cookie. Add tower-governor or manual token bucket on /login and /register. Both block same threat model — ship together.
+5. `[feature]` **Wire /webhook/stripe route + implement f120 Stripe→ISO translation** — P23 Optimist: f123 is done and tested. f120 is the next dependency (parse webhook JSON, verify via f123, build ISO message). Wire POST /webhook/stripe in main.rs with f123 gate. Implement f120 to build MTI 0100/0200 from Stripe event payload. Unblocks f122 (ISO→Stripe response) and f121 (0220 completion). Entire Stripe flow becomes real.
 6. `[fix]` **Add CSRF tokens to login/register forms** — POST endpoints accept form submissions with no CSRF protection. Guest analysis flagged this.
 7. `[fix]` **Add rate limiting to auth endpoints** — no brute-force protection on `/login`, `/register`. Consider tower-governor or manual token bucket.
 8. `[feature]` **User dashboard** — `/dashboard` showing balance, devices, entitlements. No "my account" page exists. Session infrastructure (f125/f126) is ready.
@@ -27,7 +27,7 @@ Tags: `[build]` `[test]` `[docs]` `[feature]` `[fix]` `[research]`
 16. `[feature]` **Secure cookie attributes audit** — verify Secure flag is set in production (HTTPS only). Current cookies are HttpOnly + SameSite=Lax but Secure flag unconfirmed for prod.
 17. `[docs]` **Add getting-started walkthrough** — README has build commands but no step-by-step "first run" guide for new contributors. Include Postgres setup, migration, .env config.
 18. `[feature]` **Deploy rogue-repo to gd node** — production deploy target is n1/gd via [approuter](https://github.com/cochranblock/approuter). Hot reload (SO_REUSEPORT) is ready. Depends on: [approuter](https://github.com/cochranblock/approuter) routing config.
-19. `[research]` **P23 Pessimist + Paranoia lenses on payment architecture** — Optimist lens completed 2026-04-03. Need pessimist (what fails, gaps) and paranoia (attack vectors, PCI compliance gaps) before shipping real payments. Depends on: [kova](https://github.com/cochranblock/kova) C2 fleet for parallel dispatch.
+19. ~~`[research]` **P23 Pessimist + Paranoia lenses on payment architecture**~~ DONE (2026-04-03: all three lenses complete. Key findings: free-bucks fallback exploit (now #3), CSRF+rate-limit gap (now #4), Stripe route dead code (now #5). See git log for full synthesis.)
 20. ~~`[test]` **HTTP test for Null Terminal**~~ DONE (get_null_terminal_200: verifies 200 + text/html + "Null Terminal" in body)
 
 ---
