@@ -156,6 +156,17 @@
 | 7 | Nav Login, Logout | ✓ |
 | 8 | Argon2 password hashing | ✓ |
 | 9 | HMAC-signed session | ✓ |
-| 10 | Email delivery (prod) | ⚠ Stub; log only |
-| 11 | Resend verification | ❌ |
+| 10 | Email delivery (prod) | ⚠ Stub; log only (works if RESEND_API_KEY set) |
+| 11 | Resend verification | ✓ (conditional on RESEND_API_KEY env var) |
 | 12 | Rate limiting | ❌ |
+
+---
+
+## Status Update — 2026-04-02
+
+**Changes since original analysis:**
+
+- **SESSION_SECRET enforced** — f125 (OnceLock). Release builds panic if SESSION_SECRET not set or empty. Debug builds generate random key + warn. Removed hardcoded `"dev-secret-change-in-prod"` fallback.
+- **Mutation endpoints session-gated** — f126 (`require_session`) extracts cookie via f124, validates via f20. Returns 401 if no session, 403 if session user_id != request user_id. Applied to f87, f88, f89.
+- **Login/Logout nav toggle** — f90 now takes `Option<Uuid>`. Renders Login link when not authenticated, Logout when authenticated. No more showing both.
+- **Email verification** — works end-to-end when RESEND_API_KEY is set. Falls back to logging verification URL when not set.

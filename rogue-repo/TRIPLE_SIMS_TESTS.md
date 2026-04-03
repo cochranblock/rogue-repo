@@ -187,3 +187,15 @@
 | 8 | f95 Rogue Runner (WASM) | ✓ |
 | 9 | f97–f103 Auth | ✓ |
 | 10 | f102, f103 Login/Register | ✓ |
+
+---
+
+## Status Update — 2026-04-02
+
+**Changes since original analysis:**
+
+- **f87, f88, f89 now require auth** — session cookie validated via f126 before processing. Returns 401 (no session) or 403 (user_id mismatch). No longer "placeholder" — endpoints enforce ownership.
+- **HTTP tests updated** — 503 tests replaced with 401 tests (auth checked before DB). Added `get_index_shows_login_not_logout` test. Total HTTP tests: 19 (was 18).
+- **ISO 8583 expanded** — MTI 0100 (auth), 0210 (response parse), 0400 (reversal) added. 35 switch unit tests total.
+- **Stripe stubs staged** — f120-f123 in switch/stripe.rs. Mapping table documented. Not functional.
+- **SESSION_SECRET enforced** — f125 via OnceLock. Panics in release if not set. No more hardcoded fallback.
