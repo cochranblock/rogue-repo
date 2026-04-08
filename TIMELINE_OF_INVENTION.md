@@ -8,6 +8,61 @@
 
 ---
 
+## Human Revelations — Invented Techniques
+
+*Novel ideas that came from human insight, not AI suggestion. These are original contributions to the field.*
+
+### PID Relay Binary Self-Replacement — Gemini Man Pattern (March 2026)
+
+**Invention:** Zero-downtime binary deployment where the new binary binds to the port (SO_REUSEPORT) while the old binary is still running, registers with approuter, writes its PID to the lockfile, then sends SIGTERM to the old process. If the old process doesn't die within 5 seconds, SIGKILL. Zero dropped connections.
+
+**The Problem:** Deploying a new binary version requires stopping the old one first, causing downtime. Even "graceful" shutdowns drop in-flight requests. Blue-green deployment solves this but requires two servers or a load balancer. For a solo developer running one server, there's no clean deploy story.
+
+**The Insight:** The movie "Gemini Man" — Will Smith fights a younger clone of himself. The clone doesn't wait for the original to die; it takes over immediately. Apply to binary deployment: the new binary starts, takes over the port, and kills the old one. The old binary is the "original" being replaced by its own updated clone.
+
+**The Technique:**
+1. New binary starts, binds to port with SO_REUSEPORT (both old and new can listen simultaneously)
+2. New binary registers with approuter (traffic starts routing to new binary)
+3. New binary writes its PID to lockfile, overwriting old PID
+4. New binary sends SIGTERM to old PID
+5. After 5s grace period, SIGKILL if old process still alive
+6. Result: zero gap in port binding, zero dropped requests during transition
+
+**Result:** Deploy = copy new binary + run it. Old binary dies automatically. No orchestrator, no load balancer, no container restart. Works on bare metal with one server.
+
+**Named:** Gemini Man Pattern
+**Commit:** `46c93f8`
+**Origin:** Watching "Gemini Man" (2019) and realizing the clone-replaces-original plot is the exact deploy pattern needed for single-server zero-downtime. Named by Michael Cochran.
+
+### ISO 8583 Message Builder in Rust (March 2026)
+
+**Invention:** A from-scratch ISO 8583 financial message builder using Rust's bitvec crate for bitmap construction — MTI 0100 (authorization), 0200 (purchase), 0210 (response parse), 0400 (reversal) — with AES-256-GCM encrypted PAN vault and type-safe field definitions.
+
+**The Problem:** ISO 8583 is the standard for card payment messages between merchants and banks. Every implementation is in Java or C. Rust implementations don't exist in the open source ecosystem. The spec is behind a paywall and the bitmap encoding is error-prone (a 128-bit primary+secondary bitmap where each bit indicates which data element is present).
+
+**The Insight:** Rust's bitvec crate makes ISO 8583 bitmap construction type-safe and readable. Each data element maps to a bit position. Building a message = setting bits and appending field data. The type system prevents common errors (wrong field length, missing required fields, bitmap/data mismatch).
+
+**The Technique:**
+1. `switch/iso8583.rs`: bitvec-based bitmap construction for primary (64-bit) and secondary (128-bit) bitmaps
+2. MTI construction: 0100, 0200, 0210, 0400 with correct field sets per spec
+3. PAN vault: AES-256-GCM encryption of card numbers, stored in sled
+4. Ledger: ACID transactions via SQLite for payment recording
+5. Rogue Bucks economy: internal currency using the same ISO 8583 rails
+
+**Result:** A complete payment message builder in Rust — no Java, no C, no external payment processor. The app store has its own payment rail from card swipe to settlement, all in one binary.
+
+**Named:** Rust ISO 8583
+**Commit:** See initial architecture commit and `3adc034` (expansion)
+**Origin:** Building a sovereign app store requires sovereign payments. Every existing payment integration (Stripe, Square) is a dependency. ISO 8583 is the foundation layer — implement it, and you don't need anyone else's payment API.
+
+### 2026-04-08 — Human Revelations Documentation Pass
+
+**What:** Documented novel human-invented techniques across the full CochranBlock portfolio. Added Human Revelations section with Gemini Man Pattern and Rust ISO 8583 builder.
+**Commit:** See git log
+**AI Role:** AI formatted and wrote the sections. Human identified which techniques were genuinely novel, provided the origin stories, and directed the documentation pass.
+
+---
+
 ## Entries
 
 ### 2026-04-03 — P23 Triple Lens Analysis + Doc Accuracy Pass
