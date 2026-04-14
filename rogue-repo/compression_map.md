@@ -1,7 +1,7 @@
 <!-- Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved. -->
 <!-- Contributors: GotEmCoach, KOVA, Claude Opus 4.6, SuperNinja, Composer 1.5, Google Gemini Pro 3 -->
 # Rogue Repo Compression Map
-# Token-Optimized Code Representation
+# Token-Compressed Code Representation
 # Sovereign ISO 8583 payment engine + Rogue Bucks economy
 
 ---

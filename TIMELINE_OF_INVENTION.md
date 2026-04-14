@@ -58,12 +58,19 @@
 ### 2026-04-08 — Human Revelations Documentation Pass
 
 **What:** Documented novel human-invented techniques across the full CochranBlock portfolio. Added Human Revelations section with Gemini Man Pattern and Rust ISO 8583 builder.
-**Commit:** See git log
+**Commit:** `8db139c`
 **AI Role:** AI formatted and wrote the sections. Human identified which techniques were genuinely novel, provided the origin stories, and directed the documentation pass.
 
 ---
 
 ## Entries
+
+### 2026-04-09 — Backlog Sprint + Payment Hardening
+
+**What:** Executed 6 of 20 backlog items in a single sprint. Bank TCP endpoint wired (BACKLOG #1): f127/f128/f129 in switch/tcp.rs — 2-byte big-endian length prefix wire format (Postilion/Base24), f87 buy-bucks now sends ISO 0200 over TCP when SWITCH_HOST configured, returns 402 on bank decline, 502 on TCP error. Stripe webhook HMAC-SHA256 implemented (BACKLOG #2): f123 parses Stripe-Signature header (t=, v1=), verifies via STRIPE_WEBHOOK_SECRET, hex compare — 6 unit tests. Free-bucks exploit killed (BACKLOG #3): None arm in f87 now returns 503 instead of falling through to ledger credit — removed bank_approved bool entirely. 23 new tests added across both crates (BACKLOG #9, #12, #20): rogue-runner PRNG/zone/level-gen/GameState tests (17), Stripe mapping tests (6), Null Terminal HTTP test (1). Total test count: 128 (was 65+).
+**Why:** Backlog prioritized from guest analysis and P23 paranoia lens. BACKLOG #3 was a financial exploit — unauthenticated bucks credit when no bank configured. Shipped same day as discovery.
+**Commits:** `0696873`, `e91aa34`, `0f62f77`, `d555308`, `a8f68fe`
+**AI Role:** AI implemented TCP wiring, webhook verification, exploit fix, and all tests. Human prioritized the backlog, identified the free-bucks exploit severity, and directed the sprint.
 
 ### 2026-04-03 — P23 Triple Lens Analysis + Doc Accuracy Pass
 
@@ -98,7 +105,7 @@
 **What:** Added MTI 0100 (authorization request), 0210 (response parse), 0400 (reversal) to ISO 8583 engine. P13 tokenization applied (t33, f20, c10, t34, t35). Release profile for smallest binary (opt-level='z', LTO, strip). Economy routes wired to real ledger, vault, and ISO 8583 switch.
 **Why:** A payment engine needs more than purchase requests. Auth holds, response parsing, and reversals are table stakes for ISO 8583.
 **Commits:** `3adc034`, `1edefd6`, `c4410a4`
-**AI Role:** AI implemented all 3 new MTIs, tokenization, and release optimization. Human specified ISO 8583 message type requirements and economy route wiring.
+**AI Role:** AI implemented all 3 new MTIs, tokenization, and release tightening. Human specified ISO 8583 message type requirements and economy route wiring.
 
 ### 2026-03-22 — CODEOWNERS + Governance
 
