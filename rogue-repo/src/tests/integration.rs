@@ -297,7 +297,7 @@ async fn buy_bucks_no_switch_host_returns_503(url: &str) -> t24 {
     tokio::time::sleep(tokio::time::Duration::from_millis(20)).await;
 
     // Ensure SWITCH_HOST is not set
-    std::env::remove_var("SWITCH_HOST");
+    unsafe { std::env::remove_var("SWITCH_HOST") };
 
     let body = serde_json::json!({ "user_id": uid, "pan_encrypted": [1u8, 2, 3] });
     let client = reqwest::Client::new();
@@ -354,7 +354,7 @@ async fn buy_bucks_no_switch_host_balance_unchanged(url: &str) -> t24 {
     tokio::spawn(async move { let _ = axum::serve(listener, app).await; });
     tokio::time::sleep(tokio::time::Duration::from_millis(20)).await;
 
-    std::env::remove_var("SWITCH_HOST");
+    unsafe { std::env::remove_var("SWITCH_HOST") };
 
     let body = serde_json::json!({ "user_id": uid, "pan_encrypted": [1u8, 2, 3] });
     let client = reqwest::Client::new();

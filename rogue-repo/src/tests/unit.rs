@@ -889,7 +889,7 @@ fn make_stripe_sig(secret: &str, timestamp: &str, payload: &[u8]) -> String {
 fn stripe_f123_valid_signature() -> t24 {
     let start = Instant::now();
     // Set env var, compute real signature, verify it passes
-    std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_test_secret_key_for_tests");
+    unsafe { std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_test_secret_key_for_tests") };
     let payload = br#"{"type":"payment_intent.created","data":{}}"#;
     let sig = make_stripe_sig("whsec_test_secret_key_for_tests", "1492774577", payload);
     let result = crate::switch::f123(payload, &sig);
@@ -899,7 +899,7 @@ fn stripe_f123_valid_signature() -> t24 {
 
 fn stripe_f123_invalid_signature() -> t24 {
     let start = Instant::now();
-    std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_test_secret_key_for_tests");
+    unsafe { std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_test_secret_key_for_tests") };
     let payload = b"real payload";
     let sig = "t=1492774577,v1=deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
     let result = crate::switch::f123(payload, sig);
@@ -909,17 +909,17 @@ fn stripe_f123_invalid_signature() -> t24 {
 
 fn stripe_f123_missing_env_returns_err() -> t24 {
     let start = Instant::now();
-    std::env::remove_var("STRIPE_WEBHOOK_SECRET");
+    unsafe { std::env::remove_var("STRIPE_WEBHOOK_SECRET") };
     let result = crate::switch::f123(b"payload", "t=1,v1=abc");
     let ok = result.is_err();
     // Restore for other tests
-    std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_test_secret_key_for_tests");
+    unsafe { std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_test_secret_key_for_tests") };
     t24 { name: "stripe_f123_missing_env_returns_err".into(), passed: ok, duration_ms: start.elapsed().as_millis() as u64, message: if ok { None } else { Some("missing env must return Err".into()) } }
 }
 
 fn stripe_f123_missing_timestamp_err() -> t24 {
     let start = Instant::now();
-    std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_test_secret_key_for_tests");
+    unsafe { std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_test_secret_key_for_tests") };
     // Header with no t= part
     let result = crate::switch::f123(b"payload", "v1=deadbeef");
     let ok = result.is_err();
@@ -928,7 +928,7 @@ fn stripe_f123_missing_timestamp_err() -> t24 {
 
 fn stripe_f123_missing_v1_err() -> t24 {
     let start = Instant::now();
-    std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_test_secret_key_for_tests");
+    unsafe { std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_test_secret_key_for_tests") };
     // Header with t= but no v1=
     let result = crate::switch::f123(b"payload", "t=1492774577");
     let ok = result.is_err();
@@ -937,7 +937,7 @@ fn stripe_f123_missing_v1_err() -> t24 {
 
 fn stripe_f123_tampered_payload_rejected() -> t24 {
     let start = Instant::now();
-    std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_test_secret_key_for_tests");
+    unsafe { std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_test_secret_key_for_tests") };
     let original = b"original payload";
     let tampered = b"tampered payload";
     let sig = make_stripe_sig("whsec_test_secret_key_for_tests", "1492774577", original);
