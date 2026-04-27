@@ -1,4 +1,4 @@
-<!-- Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved. -->
+<!-- Unlicense — public domain — cochranblock.org -->
 
 # Proof of Artifacts
 

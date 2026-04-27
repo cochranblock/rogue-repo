@@ -1,4 +1,4 @@
-/** Copyright (c) 2026 The Cochran Block. All rights reserved. */
+/** Unlicense — public domain — cochranblock.org */
 const CACHE = 'rogue-repo-v5';
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll([

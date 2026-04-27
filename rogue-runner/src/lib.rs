@@ -1,4 +1,4 @@
-// Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved.
+// Unlicense — public domain — cochranblock.org
 // Contributors: GotEmCoach, KOVA, Claude Opus 4.6, SuperNinja, Composer 1.5, Google Gemini Pro 3
 //! rogue-runner: 1000 levels, procedural, offline. f95=mulberry32 f96=generate_level f117=zone_for_level
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved.
+# Unlicense — public domain — cochranblock.org
 # Contributors: GotEmCoach, KOVA, Claude Opus 4.6, SuperNinja, Composer 1.5, Google Gemini Pro 3
 #!/bin/bash
 # Build rogue-runner for Windows EXE + Android APK. Copies to rogue-repo/assets/downloads/.

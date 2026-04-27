@@ -1,4 +1,4 @@
-// Copyright (c) 2026 The Cochran Block, LLC (Pending). All rights reserved.
+// Unlicense — public domain — cochranblock.org
 // Contributors: GotEmCoach, KOVA, Claude Opus 4.6, SuperNinja, Composer 1.5, Google Gemini Pro 3
 //! rogue-runner: f0=main. Frontend: input, render, assets. Backend: t88 in lib.
 
